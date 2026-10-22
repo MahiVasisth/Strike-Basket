@@ -82,11 +82,19 @@ export class PersonalManager {
 
   // ---------- lifecycle ----------
 
-  async start() {
+  /** `onSkip` hears about accounts that can't be loaded (e.g. a key encrypted under an old PERSONAL_SECRET). */
+  async start(onSkip?: (userId: string, err: unknown) => void) {
     if (!this.enabled) return;
     await this.client.syncClock(); // user clients copy this offset when they're created
     for (const u of this.users.running()) {
-      const engine = this.engineFor(u);
+      // One unreadable account must not stop the loop for everyone else; that user reconnects.
+      let engine: BasketEngine;
+      try {
+        engine = this.engineFor(u);
+      } catch (err) {
+        onSkip?.(u.id, err);
+        continue;
+      }
       await engine.recover().catch(() => undefined);
     }
     const loop = async () => {

@@ -24,7 +24,9 @@ app.log.info(
 
 await app.listen({ port: cfg.PORT, host: cfg.HOST });
 engine.start().catch((err) => app.log.error({ err }, "engine start failed"));
-personal.start().catch((err) => app.log.error({ err }, "personal mode start failed"));
+personal
+  .start((userId, err) => app.log.warn({ userId, err: (err as Error).message }, "personal account skipped at startup: the user must reconnect"))
+  .catch((err) => app.log.error({ err }, "personal mode start failed"));
 if (personal.enabled) app.log.info({ builderCode: cfg.BUILDER_CODE, feeBps: cfg.BUILDER_FEE_BPS }, "personal mode enabled");
 
 for (const sig of ["SIGINT", "SIGTERM"] as const) {

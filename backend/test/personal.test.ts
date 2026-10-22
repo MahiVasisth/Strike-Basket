@@ -52,6 +52,8 @@ function fakeStrike() {
     }
 
     switch (`${method} ${path}`) {
+      case "GET /v2/time":
+        return json(200, { serverTime: Date.now() });
       case "GET /price/v2/exchangeInfo":
         return json(200, { symbols: [filters("BTC-USD", "0.00001"), filters("ETH-USD", "0.001"), filters("XRP-USD", "0.1")] });
       case "GET /price/v2/markPrice":
@@ -190,6 +192,18 @@ describe("personal mode (Builder Connect, fake Strike testnet)", () => {
     expect(positions.get("BTC-USD")).toBe(0);
     expect(positions.get("ETH-USD")).toBe(0);
     expect(positions.get("XRP-USD")).toBe(500);
+  });
+
+  it("startup skips an account whose key can't be decrypted, without stopping personal mode", async () => {
+    const { app, store, fetchImpl } = await setup();
+    await connect(app); // key encrypted under SECRET
+    // Restart with a different PERSONAL_SECRET: the stored key no longer decrypts.
+    const cfg = loadConfig({ STRIKE_ENV: "testnet", PERSONAL_MODE: "yes", BUILDER_CODE: "mycode", PERSONAL_SECRET: "22".repeat(32), LOG_LEVEL: "silent" });
+    const pm = new PersonalManager(cfg, new StrikeClient(cfg, fetchImpl), store, new Map(loadAllBaskets().map((b) => [b.id, b])));
+    const skipped: string[] = [];
+    await expect(pm.start((id) => skipped.push(id))).resolves.toBeUndefined();
+    pm.stop();
+    expect(skipped).toHaveLength(1);
   });
 
   it("revoke stops trading and destroys the stored key", async () => {

@@ -7,7 +7,7 @@
 **The first themed, rules-based basket vault on [Strike Finance](https://strikefinance.org).**<br>
 SpaceX, Zhipu, Unitree and MiniMax in one position, markets that exist only on Strike, kept on target by a bot that can trade but never withdraw.
 
-![Tests](https://img.shields.io/badge/tests-44%20passing-18E2A0?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-45%20passing-18E2A0?style=flat-square)
 ![Built on Strike](https://img.shields.io/badge/built%20on-Strike%20Finance-4D7CFF?style=flat-square)
 ![Leverage](https://img.shields.io/badge/leverage-none%20(%E2%89%A40.9%C3%97)-9D7BFF?style=flat-square)
 ![TypeScript](https://img.shields.io/badge/TypeScript-end%20to%20end-3178C6?style=flat-square)
@@ -124,7 +124,7 @@ We also wrote down every place the live API differs from the docs: [`docs/STRIKE
 
 ## Engineering
 
-- **44 tests passing** across the rebalancer, market checks, request signing, the engine cycle, paper fills, personal mode and the mainnet write lock (`pnpm test`).
+- **45 tests passing** across the rebalancer, market checks, request signing, the engine cycle, paper fills, personal mode and the mainnet write lock (`pnpm test`).
 - **Crash-safe execution:** idempotent client order IDs, confirmation by ID, replan instead of retry.
 - **Pure rebalancer** tested against Strike's real mainnet order-size filters.
 - **Private by design:** personal-mode runs are stored per user and never appear in the public log or stream; user keys are encrypted at rest (AES-256-GCM).
@@ -158,11 +158,11 @@ Requires Node ≥ 22.13 and pnpm.
 ```bash
 pnpm install
 
-# Backend: Pre-IPO on live mainnet prices, simulated fills. No keys needed.
+# Backend (one terminal each)
 cd backend
-cp .env.example .env
-pnpm test                    # 44 tests
-STRIKE_ENV=mainnet BASKET_ID=preipo SHADOW_EQUITY_USD=5000 ADMIN_TOKEN=<16+ chars> pnpm dev   # :8787
+pnpm test                    # 45 tests
+pnpm preipo                  # Pre-IPO on live mainnet prices, simulated fills. No keys needed. :8787
+pnpm testnet                 # testnet engine + personal mode (Builder Connect). :8788
 
 # Web app (second terminal)
 cd frontend
