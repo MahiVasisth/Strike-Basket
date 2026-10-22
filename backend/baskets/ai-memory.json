@@ -1,0 +1,13 @@
+{
+  "id": "ai-memory",
+  "version": 1,
+  "name": "AI Memory",
+  "tagline": "The chips AI runs on: Micron, SK Hynix, SanDisk and CXMT.",
+  "status": "coming_soon",
+  "constituents": [
+    { "symbol": "MU-USD", "name": "Micron", "weight": 0.25 },
+    { "symbol": "SKHYNIX-USD", "name": "SK Hynix", "weight": 0.25 },
+    { "symbol": "SNDK-USD", "name": "SanDisk", "weight": 0.25 },
+    { "symbol": "CXMT-USD", "name": "CXMT", "weight": 0.25 }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "preipo",
+  "version": 1,
+  "name": "Pre-IPO",
+  "tagline": "SpaceX, Zhipu, Unitree and MiniMax in one deposit, only on Strike.",
+  "status": "live",
+  "constituents": [
+    { "symbol": "SPCX-USD", "name": "SpaceX", "weight": 0.25 },
+    { "symbol": "ZHIPU-USD", "name": "Zhipu AI", "weight": 0.25 },
+    { "symbol": "UNITREE-USD", "name": "Unitree Robotics", "weight": 0.25 },
+    { "symbol": "MINIMAX-USD", "name": "MiniMax", "weight": 0.25 }
+  ]
+}

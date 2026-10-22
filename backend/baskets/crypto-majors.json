@@ -1,0 +1,11 @@
+{
+  "id": "crypto-majors",
+  "version": 1,
+  "name": "Crypto Majors (testnet)",
+  "tagline": "Machinery test basket. Testnet lists only BTC/ETH/SOL/ADA, and SOL/ADA books sit far from mark there.",
+  "status": "live",
+  "constituents": [
+    { "symbol": "BTC-USD", "name": "Bitcoin", "weight": 0.5 },
+    { "symbol": "ETH-USD", "name": "Ethereum", "weight": 0.5 }
+  ]
+}

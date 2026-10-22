@@ -1,0 +1,11 @@
+{
+  "id": "hard-assets",
+  "version": 1,
+  "name": "Hard Assets",
+  "tagline": "Gold and oil, held on-chain.",
+  "status": "coming_soon",
+  "constituents": [
+    { "symbol": "XAU-USD", "name": "Gold", "weight": 0.6 },
+    { "symbol": "WTI-USD", "name": "WTI Crude", "weight": 0.4 }
+  ]
+}
