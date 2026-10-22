@@ -67,6 +67,11 @@ pnpm test                    # rebalancer, gates, signing, engine
 pnpm plan --basket preipo --env mainnet --equity 500   # plan only, live mainnet prices
 pnpm probe                   # go/no-go checks (see docs/PLAN.md)
 pnpm dev                     # engine + API on :8787
+
+# web app (second terminal)
+cd frontend
+cp .env.example .env.local   # VITE_API_URL (hero) + optional VITE_TESTNET_API_URL
+pnpm dev                     # http://localhost:5173
 ```
 
 ## Business model

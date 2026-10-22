@@ -4,6 +4,8 @@
   "scripts": {
     "dev": "pnpm --filter @strike-baskets/backend dev",
     "test": "pnpm --filter @strike-baskets/backend test",
-    "typecheck": "pnpm --filter @strike-baskets/backend typecheck"
+    "typecheck": "pnpm --filter @strike-baskets/backend typecheck",
+    "web": "pnpm --filter @strike-baskets/frontend dev",
+    "web:build": "pnpm --filter @strike-baskets/frontend build"
   }
 }

@@ -1,0 +1,170 @@
+@import "@fontsource/unbounded/300.css";
+@import "@fontsource/unbounded/500.css";
+@import "@fontsource/unbounded/700.css";
+@import "@fontsource/inter-tight/400.css";
+@import "@fontsource/inter-tight/500.css";
+@import "@fontsource/inter-tight/600.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "tailwindcss";
+
+/* "Orbit" theme. Pure black space, glass panels, one glowing ring. */
+@theme {
+  --font-display: "Unbounded", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-void: #000000;
+  --color-edge: rgb(255 255 255 / 0.09);
+  --color-text: #f2f4f8;
+  --color-dim: #8a90a2;
+  --color-faint: #4a5063;
+
+  --color-ok: #18e2a0;
+  --color-warn: #ffb020;
+  --color-bad: #ff4d5e;
+  --color-blue: #4d7cff;
+  --color-violet: #9d7bff;
+  --color-pink: #ff3d8b;
+
+  --radius-card: 22px;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #000;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Three soft glows + a static starfield that fades out by mid-page. */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+body::before {
+  background:
+    radial-gradient(900px 620px at 88% -8%, rgb(77 124 255 / 0.22), transparent 62%),
+    radial-gradient(760px 620px at -12% 38%, rgb(157 123 255 / 0.12), transparent 62%),
+    radial-gradient(720px 560px at 96% 96%, rgb(255 61 139 / 0.08), transparent 62%);
+}
+body::after {
+  position: absolute;
+  height: 1400px;
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, rgb(255 255 255 / 0.55), transparent 60%),
+    radial-gradient(1px 1px at 140px 90px, rgb(255 255 255 / 0.35), transparent 60%),
+    radial-gradient(1px 1px at 260px 170px, rgb(255 255 255 / 0.45), transparent 60%),
+    radial-gradient(1px 1px at 80px 210px, rgb(255 255 255 / 0.25), transparent 60%),
+    radial-gradient(1px 1px at 330px 40px, rgb(255 255 255 / 0.3), transparent 60%),
+    radial-gradient(1px 1px at 200px 260px, rgb(255 255 255 / 0.4), transparent 60%);
+  background-size: 360px 300px;
+  mask-image: linear-gradient(to bottom, black 0%, transparent 55%);
+}
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+.font-display {
+  letter-spacing: -0.03em;
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.gradient-text {
+  background: linear-gradient(180deg, #ffffff 0%, #a9b3d6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glass {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.02));
+  border: 1px solid var(--color-edge);
+  border-radius: var(--radius-card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Only things that prove real Strike trading get this border. */
+.proof-glow {
+  border: 1px solid transparent;
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(180deg, rgb(14 16 24 / 0.92), rgb(8 9 14 / 0.92)) padding-box,
+    linear-gradient(135deg, #4d7cff, #9d7bff 35%, transparent 60%, #18e2a0) border-box;
+  box-shadow: 0 0 60px rgb(77 124 255 / 0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.btn-plasma {
+  background: linear-gradient(135deg, #4d7cff, #9d7bff);
+  box-shadow: 0 8px 30px rgb(110 110 255 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.35);
+  color: #fff;
+}
+.btn-plasma:hover {
+  filter: brightness(1.08);
+}
+
+:focus-visible {
+  outline: 2px solid #9d7bff;
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+@keyframes shimmer {
+  from { background-position: -400px 0; }
+  to { background-position: 400px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.04));
+  background-size: 800px 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 10px;
+}
+
+@keyframes progress {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+.progress-line {
+  animation: progress 1.3s ease-in-out infinite;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.rise {
+  animation: rise 0.4s ease-out both;
+}
+
+::selection {
+  background: rgb(157 123 255 / 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer,
+  .progress-line,
+  .rise {
+    animation: none;
+  }
+}
+
+body {
+  position: relative;
+}
