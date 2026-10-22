@@ -1,89 +1,191 @@
+<div align="center">
+
 # Strike Baskets
 
-**One deposit, a whole theme.** Strike Baskets is a themed, rules-based basket vault on [Strike Finance](https://strikefinance.org). You deposit once into a Strike user vault. Our bot holds every market in the theme at published weights and keeps them on target. The live basket is **Pre-IPO: SpaceX, Zhipu, Unitree and MiniMax**, markets that exist only on Strike.
+### One deposit, a whole theme.
 
-- Fixed, published weights. No discretion, no leverage (positions ≤ 0.9× equity).
-- Money stays in Strike's vault. The bot holds a trade-only API key and cannot withdraw.
-- **Or run it in your own Strike account**: connect a wallet (Strike Builder Connect), pick a budget, and the same engine keeps the basket on target there. You can pause or disconnect any time; the key trades but can't withdraw.
-- Every rebalance is logged with its order IDs: Strike order IDs on the testnet vault, `paper-N` IDs for simulated fills.
+**The first themed, rules-based basket vault on [Strike Finance](https://strikefinance.org).**<br>
+SpaceX, Zhipu, Unitree and MiniMax in one position, markets that exist only on Strike, kept on target by a bot that can trade but never withdraw.
 
-> Built for the Strike Hackathon (21–23 Oct 2026). Planning happened before the window; all code was written during it.
+![Tests](https://img.shields.io/badge/tests-44%20passing-18E2A0?style=flat-square)
+![Built on Strike](https://img.shields.io/badge/built%20on-Strike%20Finance-4D7CFF?style=flat-square)
+![Leverage](https://img.shields.io/badge/leverage-none%20(%E2%89%A40.9%C3%97)-9D7BFF?style=flat-square)
+![TypeScript](https://img.shields.io/badge/TypeScript-end%20to%20end-3178C6?style=flat-square)
+
+<img src="docs/images/hero.png" alt="Strike Baskets: the Pre-IPO basket with its orbit ring of four markets, live weights and drift" width="100%">
+
+</div>
+
+---
+
+## The problem
+
+Strike lists markets you can't trade anywhere else: **pre-IPO perps** for SpaceX, Zhipu AI, Unitree Robotics and MiniMax, plus stock perps. To get exposure to a *theme* today, you'd open four positions, size them yourself, and rebalance by hand every time prices move. Most people won't. The ones who do, drift.
+
+## The solution
+
+**Strike Baskets turns a theme into one deposit.**
+
+- **Pick a theme.** The live basket is **Pre-IPO**: four Strike-only markets at 25% each.
+- **Deposit once on Strike.** Your money sits in a Strike user vault, not with us.
+- **The bot keeps it on target.** When any weight drifts 5 points, it sends one batch of orders to bring the basket back. Fixed, published rules. No discretion, no leverage.
+- **Every trade is public.** Each rebalance is logged with its before/after weights, market checks and order IDs.
+
+**Or keep the money in your own Strike account.** Connect a wallet with one signature through **Strike Builder Connect**, pick a budget, and the same engine runs the basket in your account. Pause or disconnect any time. We can trade, never withdraw.
+
+---
+
+## Two-minute tour for judges
+
+| Look at | What it shows | Where |
+|---|---|---|
+| **The orbit ring** | Each arc is a market's *current* weight; dashed ticks mark the *targets*. The gap is the drift. | `/` hero |
+| **"Same engine, real orders"** | The same code trading a real Strike vault on testnet, with order IDs you can copy and find on Strike. | `/` proof card → `/testnet` |
+| **A rebalance** | Before → target, the market checks at that moment, and every order with its ID. | `/rebalances/:id` |
+| **Market checks** | Every market's spread and mark-vs-book, live. A failing book means no orders: the run is logged as `gated`. (On testnet, SOL/ADA books sat 17–26% off mark and were refused.) | ticker strip, rebalance detail |
+| **Personal mode** | Wallet signature → the bot runs the basket in *your* Strike account. | `/connect` → `/me` |
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/rebalance.png" alt="Rebalance detail: before and after weights, market checks and the orders table"><br><sub><b>Rebalance detail.</b> Before → target, market checks at the time, every order and its ID.</sub></td>
+<td width="50%"><img src="docs/images/connect.png" alt="Connect flow: pick a basket, connect MetaMask, sign Strike's message"><br><sub><b>Personal mode.</b> Pick a basket, connect MetaMask, sign Strike's own message. No gas, no funds move.</sub></td>
+</tr>
+</table>
+
+---
 
 ## Proof
+
 | | |
 |---|---|
-| Testnet vault (live orders) | _TODO: vault ID, run IDs, order IDs_ |
-| Pre-IPO basket on mainnet prices (paper) | _TODO: running since, run IDs of rebalances_ |
+| **Testnet vault (live Strike orders)** | _Vault ID, run IDs and Strike order IDs: added before submission_ |
+| **Personal mode on testnet** | Builder code **`StrikeBasket`** registered; Builder Connect round-trip verified with a real wallet signature. _First personal-mode order IDs: added before submission_ |
+| **Pre-IPO basket on mainnet prices** | Runs on live Strike mainnet prices with simulated fills. _Running since: added before submission_ |
 
-The Pre-IPO basket runs on live mainnet prices with simulated fills (bid/ask, Strike's 0.05% taker fee, live funding): we didn't put real money in for the hackathon. Its orders go through the same executor that trades our testnet vault; only the venue differs. Vault orders on the pre-IPO markets themselves are untested until a mainnet vault is funded.
+**Honest line:** we didn't put real money in for the hackathon, so the Pre-IPO basket fills on paper: at Strike's live bid/ask, with Strike's 0.05% taker fee and live funding, through **the same executor** that trades the testnet vault. Only the venue differs. Vault orders on the pre-IPO markets themselves are untested until a mainnet vault is funded.
+
+---
 
 ## How it works
+
+```mermaid
+flowchart LR
+    A[Strike market data<br/>marks, books, filters] --> G
+    B[Strike vault state<br/>equity, positions] --> G
+    G{Market checks<br/>spread · mark vs book · book age} -->|pass| R[Rebalancer<br/>pure function]
+    G -->|fail| X[Hold: no orders<br/>logged as gated]
+    R --> E[Executor<br/>one batch, reductions first<br/>idempotent client IDs]
+    E --> S[(Strike orders<br/>tagged vault_id)]
+    E --> L[(Run log<br/>SQLite)]
+    L --> API[API + live stream] --> W[Web app]
 ```
- Strike market data ──┐
- Strike vault state ──┼─► gates ─► rebalancer (pure) ─► executor ─► Strike orders (vault_id)
-   (positions, equity)│    spread, mark-vs-book,          batch / TWAP, idempotent client IDs,
-                      │    book age                        reconcile by client_order_id
-                      └─────────────────────────────► snapshots, runs, legs ─► API + SSE ─► web app
-```
-Every cycle (default 5 min):
-1. Read the vault's equity and positions from Strike, the source of truth.
-2. Check market quality for each constituent. Off-hours stock and pre-IPO books are the main live risk.
-3. Compute target positions. If any weight is ≥ 5 pts off target (or the vault holds something outside the basket), plan the trades. Legs below Strike's minimum order size are skipped with a reason.
-4. Send the plan as one batch of vault orders, reductions first. Confirm each leg by `client_order_id`.
-5. Record the run and stream it to the page.
 
-The bot never re-sends an order. It replans from Strike's actual positions on the next cycle, so a crash or timeout can't double-trade.
+Every cycle:
 
-## Strike integration
-| Strike capability | Where |
-|---|---|
-| API wallet auth (Ed25519) | [backend/src/strike/sign.ts](backend/src/strike/sign.ts) |
-| Vault leader orders, batch orders, `vault_id` | [backend/src/engine/executor.ts](backend/src/engine/executor.ts), [backend/src/strike/client.ts](backend/src/strike/client.ts) |
-| TWAP (`/v2/algo/twap`) for large legs | [executor.ts](backend/src/engine/executor.ts) |
-| Leverage and margin mode per symbol | `Executor.ensureSymbolSettings` |
-| Public vault data (share price, equity, positions) | [backend/src/engine/engine.ts](backend/src/engine/engine.ts) |
-| Market data (exchangeInfo filters, mark, book ticker) | [client.ts](backend/src/strike/client.ts), [backend/src/core/gates.ts](backend/src/core/gates.ts) |
-| Stock and pre-IPO perps | [backend/baskets/](backend/baskets/) |
-| Builder Codes: Builder Connect (wallet-signature onboarding) + `X-Builder-Fee-Bps` | [backend/src/personal/manager.ts](backend/src/personal/manager.ts), [client.ts](backend/src/strike/client.ts) |
+1. **Read** equity and positions from Strike, the source of truth.
+2. **Check** each market's book: spread ≤ 0.5%, mark within 1% of the book mid, book ≤ 60 s old. Off-hours pre-IPO books are the main live risk, and a failing book means no trade.
+3. **Plan** with a pure function: target = equity × 0.9 × weight. Rebalance when any weight is 5 points off target. Legs below Strike's minimum order size are skipped with a reason.
+4. **Execute** one batch of orders, reductions first, each with an idempotent `client_order_id`, then confirm each by that ID.
+5. **Record** the run, its orders and a snapshot, and stream it to the page.
 
-## Safety rules
+**The bot never re-sends an order.** It replans from Strike's actual positions on the next cycle, so a crash or a timeout can't double-trade.
+
+---
+
+## Built deep on Strike
+
+| Strike capability | How we use it | Code |
+|---|---|---|
+| **Strike-only markets** | Pre-IPO perps (SpaceX, Zhipu, Unitree, MiniMax) are the product | [`backend/baskets/`](backend/baskets/) |
+| **User vaults: leader orders** | Batch orders tagged with `vault_id` | [`executor.ts`](backend/src/engine/executor.ts), [`client.ts`](backend/src/strike/client.ts) |
+| **Builder Codes + Builder Connect** | Wallet-signature onboarding for personal mode; `X-Builder-Fee-Bps` on fills | [`personal/manager.ts`](backend/src/personal/manager.ts) |
+| **API wallet auth** | Ed25519-signed requests from a trade-only key | [`sign.ts`](backend/src/strike/sign.ts) |
+| **TWAP** (`/v2/algo/twap`) | Optional for large legs; batch orders are the default | [`executor.ts`](backend/src/engine/executor.ts) |
+| **Per-symbol settings** | Cross margin at a 2x setting on every market | `Executor.ensureSymbolSettings` |
+| **Market data** | `exchangeInfo` filters, mark prices, book tickers | [`gates.ts`](backend/src/core/gates.ts) |
+| **Public vault data** | Share price, equity, depositors, positions | [`engine.ts`](backend/src/engine/engine.ts) |
+
+We also wrote down every place the live API differs from the docs: [`docs/STRIKE-API-NOTES.md`](docs/STRIKE-API-NOTES.md).
+
+---
+
+## Safe by construction
+
 | Rule | Default |
 |---|---|
-| Gross exposure | 0.9× equity (config refuses > 1) |
-| Margin | cross, 2x setting per symbol |
-| Max per leg / per run | $2,000 / $5,000 |
-| Drift threshold | 5 pts; cooldown 30 min between drift rebalances |
-| Market gates | spread ≤ 50 bps, mark within 100 bps of book mid, book ≤ 60 s old |
-| Pause switch | `POST /api/admin/pause`; state shown publicly |
-| Flatten | `POST /api/admin/flatten` (only while paused) |
-| Mainnet writes | blocked inside the HTTP client unless `ALLOW_MAINNET_WRITES=yes` (unset: mainnet is read-only) |
+| Exposure | **Positions ≤ 0.9× equity. No leverage.** The config refuses anything above 1×. |
+| Margin | Cross, 2x setting per symbol: effective exposure stays under 1× |
+| Order caps | $2,000 per order, $5,000 per run |
+| Drift trigger | 5 points, then a 30-minute cooldown between drift rebalances |
+| Market checks | Spread ≤ 50 bps, mark within 100 bps of book mid, book ≤ 60 s old |
+| Pause and flatten | Admin pause, shown publicly on the page; flatten works only while paused |
+| Withdrawals | **The bot can't.** Its key trades only. Deposits and withdrawals happen on Strike. |
+| Mainnet write lock | The HTTP client refuses every mainnet order unless `ALLOW_MAINNET_WRITES=yes` |
+
+## Engineering
+
+- **44 tests passing** across the rebalancer, market checks, request signing, the engine cycle, paper fills, personal mode and the mainnet write lock (`pnpm test`).
+- **Crash-safe execution:** idempotent client order IDs, confirmation by ID, replan instead of retry.
+- **Pure rebalancer** tested against Strike's real mainnet order-size filters.
+- **Private by design:** personal-mode runs are stored per user and never appear in the public log or stream; user keys are encrypted at rest (AES-256-GCM).
+- **Live UI:** React + TanStack Query over a Server-Sent Events stream, with a polling fallback. Every page works on a phone.
+
+<p align="center"><img src="docs/images/mobile.png" alt="Strike Baskets on a phone" width="280"></p>
+
+---
+
+## Business model
+
+Two revenue lines, both native to Strike:
+
+- **Vault leader commission:** 0–50% (default 10%), charged only on profitable withdrawals.
+- **Builder fee** on personal-mode fills: we charge 0.10%; Strike allows up to 1%.
+
+Every basket brings Strike deposits and steady rebalancing volume on its unique markets.
+
+## Roadmap
+
+1. **Pre-IPO vault on mainnet**: mostly configuration, since the same executor already runs paper and testnet. First step is a small live order test on the pre-IPO markets.
+2. **More themes** on the same engine: AI Memory (Micron, SK Hynix, SanDisk, CXMT), Hard Assets (gold, oil).
+3. **Strategist marketplace**: anyone publishes a basket's rules and earns the leader commission; the engine does the rest.
+
+---
 
 ## Run it
-```bash
-cd backend
-pnpm install
-cp .env.example .env         # paper mode on testnet data works with no keys
-pnpm test                    # rebalancer, gates, signing, engine
-pnpm plan --basket preipo --env mainnet --equity 500   # plan only, live mainnet prices
-pnpm probe                   # go/no-go checks (see docs/PLAN.md)
-pnpm dev                     # engine + API on :8787
 
-# web app (second terminal)
+Requires Node ≥ 22.13 and pnpm.
+
+```bash
+pnpm install
+
+# Backend: Pre-IPO on live mainnet prices, simulated fills. No keys needed.
+cd backend
+cp .env.example .env
+pnpm test                    # 44 tests
+STRIKE_ENV=mainnet BASKET_ID=preipo SHADOW_EQUITY_USD=5000 ADMIN_TOKEN=<16+ chars> pnpm dev   # :8787
+
+# Web app (second terminal)
 cd frontend
-cp .env.example .env.local   # VITE_API_URL (hero) + optional VITE_TESTNET_API_URL
+cp .env.example .env.local   # VITE_API_URL + optional VITE_TESTNET_API_URL
 pnpm dev                     # http://localhost:5173
 ```
 
-## Business model
-Two revenue lines, both native to Strike: the **vault leader commission** (0–50%, default 10%, on profitable withdrawals only) and the **builder fee** on personal-mode fills (we charge 0.10%; Strike allows up to 1%). First milestone: $50k in basket vaults → about $500/yr at 10% commission on a 10% gain. Next: more themes, then baskets from other strategists running on the same engine.
+More: `pnpm plan --basket preipo --env mainnet --equity 500` (dry-run plan on live prices), `pnpm probe` (go/no-go checks). Every setting is documented in [`backend/.env.example`](backend/.env.example); the testnet and personal-mode setup is in [`docs/HANDOFF.md`](docs/HANDOFF.md) §7.
 
 ## What we don't claim
+
 No performance claims: the vault is days old. It's a basket vault of perpetual futures, not an index fund. Strike already has user vaults; this is the first **themed, rules-based basket** vault.
 
-## Docs
-- [docs/HANDOFF.md](docs/HANDOFF.md): **start here.** Current state, decisions, next steps
-- [docs/PLAN.md](docs/PLAN.md): runbook, go/no-go, decisions
-- [docs/reference/](docs/reference/): source docs (brief, idea doc, fit and decision reports, event rules)
-- [docs/FRONTEND.md](docs/FRONTEND.md): web app requirements and API contract
-- [docs/PERSONAL-MODE.md](docs/PERSONAL-MODE.md): personal mode (Builder Connect)
-- [docs/STRIKE-API-NOTES.md](docs/STRIKE-API-NOTES.md): verified API facts
+## Repository
+
+| Path | What's there |
+|---|---|
+| [`backend/`](backend/) | Engine, Strike client, rebalancer, API (TypeScript, Fastify, SQLite) |
+| [`frontend/`](frontend/) | Web app (React, Vite, Tailwind, TanStack Query, lightweight-charts) |
+| [`docs/HANDOFF.md`](docs/HANDOFF.md) | Current state, decisions and next steps. **Start here.** |
+| [`docs/FRONTEND.md`](docs/FRONTEND.md) | Web app spec and API contract |
+| [`docs/PERSONAL-MODE.md`](docs/PERSONAL-MODE.md) | Personal mode (Builder Connect) |
+| [`docs/STRIKE-API-NOTES.md`](docs/STRIKE-API-NOTES.md) | Verified Strike API facts |
+| [`docs/PLAN.md`](docs/PLAN.md) | Runbook and go/no-go checklist |
+
+<div align="center"><sub>Built for the Strike Hackathon, 21–23 October 2026. Planning happened before the window; all code was written during it.</sub></div>
