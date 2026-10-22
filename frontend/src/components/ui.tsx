@@ -58,7 +58,7 @@ export function CardTitle({ children, right }: { children: ReactNode; right?: Re
 }
 
 /** Environment pill. The environment word is the only uppercase text on the site. */
-export function EnvPill({ basket }: { basket: Pick<Basket, "env" | "mode" | "source"> }) {
+export function EnvPill({ basket, full = false }: { basket: Pick<Basket, "env" | "mode" | "source">; full?: boolean }) {
   const b = envBadge(basket);
   const amber = b.tone === "paper";
   const color = amber ? "#FFB020" : b.tone === "live" ? "#18E2A0" : "#4D7CFF";
@@ -69,7 +69,7 @@ export function EnvPill({ basket }: { basket: Pick<Basket, "env" | "mode" | "sou
     >
       <GlowDot color={color} size={6} />
       <span className="font-semibold tracking-wider">{b.label.split(" ")[0]}</span>
-      <span className="hidden text-[11.5px] opacity-85 xl:inline">{b.detail}</span>
+      <span className={`text-[11.5px] opacity-85 ${full ? "" : "hidden xl:inline"}`}>{b.detail}</span>
     </span>
   );
 }

@@ -51,7 +51,8 @@ export function BasketPage({ api, variant }: { api: Api; variant: "hero" | "test
           <h1 className={`gradient-text mt-6 font-display font-bold leading-[0.95] ${nameSize}`} style={{ letterSpacing: "-0.05em" }}>
             {b?.name ?? <Skeleton className="h-20 w-72" />}
           </h1>
-          <p className="mt-5 max-w-lg text-[17px] leading-relaxed text-text/90">{b?.tagline}</p>
+          {hero && <p className="mt-4 font-display text-[20px] font-light text-text sm:text-[24px]" style={{ letterSpacing: "-0.03em" }}>One deposit, a whole theme.</p>}
+          <p className="mt-4 max-w-lg text-[17px] leading-relaxed text-text/90">{b?.tagline}</p>
           {hero && <p className="mt-2 text-[14px] text-dim">The first themed, rules-based basket vault on Strike. Positions ≤ 0.9× equity. No leverage.</p>}
 
           <dl className="mt-8 grid max-w-lg grid-cols-3 gap-5">

@@ -8,7 +8,7 @@ import { safeStorage, useNow } from "../lib/hooks";
 import { DriftGauge } from "../components/Gauge";
 import { ADDRESS_KEY, TOKEN_KEY } from "../components/Layout";
 import { OrbitRing } from "../components/OrbitRing";
-import { HoldingsTable, LogList } from "../components/sections";
+import { GatesList, HoldingsTable, LogList } from "../components/sections";
 import { Button, CardTitle, Chip, ErrorNote, Glass, LinkButton, Page, Skeleton } from "../components/ui";
 
 const local = safeStorage("local");
@@ -91,6 +91,7 @@ export function MePage() {
             <div className="mt-2 flex flex-wrap items-center gap-2 text-[13.5px] text-dim">
               <Chip tone={paused ? "grey" : "ok"}>{paused ? "paused" : "active"}</Chip>
               <span className="num text-text">{shortAddr(u.address)}</span>
+              <span>· {u.chain}</span>
               <span>· budget <span className="num text-text">{usd(u.budgetUsd, 0)}</span></span>
               <span>· checked {ago(v?.health.lastTickAt, now)}</span>
             </div>
@@ -136,6 +137,18 @@ export function MePage() {
           <Glass className="p-6 lg:col-span-4">
             <CardTitle>My rebalances</CardTitle>
             <LogList runs={runs.data} linkBase="/me/rebalances" limit={8} />
+          </Glass>
+          <Glass className="p-6 lg:col-span-7">
+            <CardTitle right={<Chip tone={s.gates.every((g) => g.ok) ? "ok" : "bad"}>{s.gates.every((g) => g.ok) ? "all pass" : "blocked"}</Chip>}>Market checks</CardTitle>
+            <GatesList basket={{ constituents }} gates={s.gates} />
+          </Glass>
+          <Glass className="p-6 lg:col-span-5">
+            <CardTitle>Warnings</CardTitle>
+            {s.warnings.length === 0 ? (
+              <p className="text-[13.5px] text-dim">None. Your basket is running normally.</p>
+            ) : (
+              <ul className="space-y-2 text-[13.5px]">{s.warnings.map((w) => <li key={w} className="text-warn">{warningText(w)}.</li>)}</ul>
+            )}
           </Glass>
         </div>
       )}

@@ -45,15 +45,24 @@ export function TickerStrip({ basket, weights, gates }: { basket: Basket; weight
         const tone = !g ? "text-dim" : !g.ok ? "text-bad" : g.warnings.length ? "text-warn" : "text-ok";
         const label = !g ? "" : !g.ok ? "blocked" : g.warnings.length ? "warning" : "passes";
         return (
-          <div key={c.symbol} className="flex items-center justify-between gap-3 bg-[#07080d]/95 px-5 py-4">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <GlowDot color={color(c.symbol)} />
-              <span className="num text-[13.5px] font-medium text-text">{ticker(c.symbol)}</span>
-              <span className="num text-[13.5px] text-dim">{w ? price(w.mark) : "—"}</span>
+          <div key={c.symbol} className="bg-[#07080d]/95 px-5 py-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <GlowDot color={color(c.symbol)} />
+                <span className="num text-[13.5px] font-medium text-text">{ticker(c.symbol)}</span>
+                <span className="num text-[13.5px] text-dim">{w ? price(w.mark) : "—"}</span>
+              </div>
+              <span className={`num text-[12px] ${tone}`}>{g ? `● ${label}` : "—"}</span>
             </div>
-            <span className={`num text-[12px] ${tone}`} title={g ? `Market check ${label}` : undefined}>
-              {g?.spreadBps != null ? `${g.spreadBps.toFixed(1)} bps` : "—"} <span className="sr-only">{label}</span>
-            </span>
+            <div className="num mt-1.5 flex justify-between gap-3 text-[11.5px] text-dim">
+              <span>spread {g?.spreadBps != null ? `${g.spreadBps.toFixed(1)} bps` : "—"}</span>
+              <span>mark vs book {g?.markMidDeviationBps != null ? `${g.markMidDeviationBps.toFixed(1)} bps` : "—"}</span>
+            </div>
+            {g && (g.failures.length > 0 || g.warnings.length > 0) && (
+              <div className={`mt-1.5 text-[12px] ${g.failures.length ? "text-bad" : "text-warn"}`}>
+                {[...g.failures.map(gateFailureText), ...g.warnings.map(warningText)].join(" · ")}
+              </div>
+            )}
           </div>
         );
       })}
@@ -88,6 +97,11 @@ export function ProofCard({ className = "" }: { className?: string }) {
       <CardTitle right={run ? <StatusChip status={run.status} /> : <Chip tone="grey">waiting</Chip>}>Proof · live Strike vault on testnet</CardTitle>
       <h3 className="font-display text-[26px] font-medium leading-tight">Same engine, real orders</h3>
       <p className="mt-2 text-[13.5px] leading-relaxed text-dim">Testnet lists only crypto, so the live-vault proof runs on BTC/ETH.</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px] text-dim">
+        <span>Vault</span>
+        {b?.vault.id ? <OrderIdChip id={b.vault.id} /> : <span className="num">not created yet</span>}
+        {b?.vault.url && <a href={b.vault.url} target="_blank" rel="noreferrer" className="text-violet hover:underline">View on Strike ↗</a>}
+      </div>
       <div className="mt-5 grid grid-cols-3 gap-2.5">
         <StatTile label="Share price" value={s?.sharePrice ? usd(s.sharePrice, 4) : "—"} />
         <StatTile label="Equity" value={s ? usd(s.equity, 0) : "—"} />
@@ -113,12 +127,8 @@ export function ProofCard({ className = "" }: { className?: string }) {
         )}
       </div>
       <div className="mt-5 flex flex-wrap gap-2">
-        {run ? (
-          <LinkButton to={`/testnet/rebalances/${run.id}`} variant="plasma">Open rebalance</LinkButton>
-        ) : (
-          <LinkButton to="/testnet" variant="plasma">Open testnet view</LinkButton>
-        )}
-        {b?.vault.url && <LinkButton href={b.vault.url}>Vault on Strike ↗</LinkButton>}
+        {run && <LinkButton to={`/testnet/rebalances/${run.id}`} variant="plasma">Open rebalance</LinkButton>}
+        <LinkButton to="/testnet" variant={run ? "secondary" : "plasma"}>Full testnet view →</LinkButton>
       </div>
     </Glass>
   );
@@ -171,13 +181,14 @@ export function HoldingsTable({ basket, rows, thresholdBps }: { basket: Pick<Bas
   const th = "pb-3 text-left text-[12px] font-normal text-dim";
   return (
     <div className="-mx-1 overflow-x-auto">
-      <table className="w-full text-[13.5px] sm:min-w-[520px]">
+      <table className="w-full text-[13.5px] sm:min-w-[580px]">
         <thead>
           <tr className="border-b border-edge">
             <th className={`${th} pl-1`}>Market</th>
             <th className={`${th} hidden text-right sm:table-cell`}>Mark</th>
             <th className={`${th} w-[26%] pl-3 sm:pl-5`}><span className="hidden sm:inline">Weight vs target</span></th>
             <th className={`${th} text-right`}>Current</th>
+            <th className={`${th} hidden text-right sm:table-cell`}>Target</th>
             <th className={`${th} text-right`}>Drift</th>
             <th className={`${th} hidden pr-1 text-right sm:table-cell`}>Qty</th>
           </tr>
@@ -187,7 +198,7 @@ export function HoldingsTable({ basket, rows, thresholdBps }: { basket: Pick<Bas
             const c = color(r.symbol);
             const max = Math.max(0.5, r.targetWeight * 1.6, r.currentWeight);
             return (
-              <tr key={r.symbol} className="border-b border-edge last:border-0">
+              <tr key={r.symbol} className={`border-b border-edge last:border-0 ${Math.abs(r.driftBps) >= thresholdBps ? "bg-bad/[0.08]" : ""}`}>
                 <td className="py-3 pl-1">
                   <span className="flex items-center gap-2.5"><GlowDot color={c} /><span className="text-text">{nameOf(r.symbol)}</span></span>
                 </td>
@@ -199,6 +210,7 @@ export function HoldingsTable({ basket, rows, thresholdBps }: { basket: Pick<Bas
                   </div>
                 </td>
                 <td className="num py-3 text-right text-text">{pct(r.currentWeight)}</td>
+                <td className="num hidden py-3 text-right text-dim sm:table-cell">{pct(r.targetWeight)}</td>
                 <td className={`num py-3 text-right ${driftTone(r.driftBps, thresholdBps)}`}>
                   {r.driftBps > 0 ? "+" : r.driftBps < 0 ? "−" : ""}{Math.abs(Math.round(r.driftBps))} bps
                 </td>
@@ -351,16 +363,17 @@ export function OrdersTable({ basket, legs }: { basket: Pick<Basket, "constituen
   const th = "pb-3 text-left text-[12px] font-normal text-dim whitespace-nowrap";
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px] text-[13.5px]">
+      <table className="w-full min-w-[920px] text-[13.5px]">
         <thead>
           <tr className="border-b border-edge">
             <th className={th}>Market</th>
             <th className={th}>Side</th>
             <th className={`${th} text-right`}>Qty</th>
             <th className={`${th} text-right`}>Est. notional</th>
-            <th className={`${th} text-right`}>Filled at</th>
+            <th className={`${th} pl-5`}>Method</th>
+            <th className={`${th} text-right`}>Filled</th>
             <th className={`${th} pl-5`}>Status</th>
-            <th className={th}>Order ID</th>
+            <th className={th}>{legs.some((l) => !isSimulated(l)) ? "Strike order ID" : "Order ID"}</th>
           </tr>
         </thead>
         <tbody>
@@ -376,7 +389,8 @@ export function OrdersTable({ basket, legs }: { basket: Pick<Basket, "constituen
                 </td>
                 <td className="num py-3 text-right">{qty(l.qty)}</td>
                 <td className="num py-3 text-right text-dim">{usd(l.notionalEst)}</td>
-                <td className="num py-3 text-right text-dim">{l.avgPrice ? price(l.avgPrice) : "—"}</td>
+                <td className="num py-3 pl-5 text-dim">{l.method}{l.twapId ? " ↻" : ""}</td>
+                <td className="num py-3 text-right text-dim">{l.filledQty ? `${qty(l.filledQty)} @ ${price(l.avgPrice)}` : "—"}</td>
                 <td className="py-3 pl-5">
                   <div className="flex items-center gap-1.5"><StatusChip status={l.status} />{sim && <Chip tone="sim">simulated</Chip>}</div>
                   {l.error && <div className="mt-1 max-w-[220px] text-[12px] text-bad">{l.error}</div>}

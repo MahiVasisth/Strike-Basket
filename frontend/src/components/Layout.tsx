@@ -67,7 +67,7 @@ export function Layout() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            {b && <span className="hidden lg:inline-flex"><EnvPill basket={b} /></span>}
+            {b && <span className="hidden md:inline-flex"><EnvPill basket={b} /></span>}
             {personal && (
               <span className="hidden sm:inline-flex">
                 <LinkButton to={token ? "/me" : "/connect"} className="!py-2 !text-[13.5px]">
@@ -96,6 +96,12 @@ export function Layout() {
               )}
             </Page>
           </nav>
+        )}
+        {/* Below md the header has no room: the environment badge gets its own line so it's always visible. */}
+        {b && (
+          <div className="border-t border-edge md:hidden">
+            <Page className="flex justify-center py-2"><EnvPill basket={b} full /></Page>
+          </div>
         )}
         {executing && (
           <div className="relative h-[3px] overflow-hidden bg-white/[0.04]" role="status">
