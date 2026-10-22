@@ -1,0 +1,9 @@
+{
+  "name": "strike-baskets",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @strike-baskets/backend dev",
+    "test": "pnpm --filter @strike-baskets/backend test",
+    "typecheck": "pnpm --filter @strike-baskets/backend typecheck"
+  }
+}
