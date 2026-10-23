@@ -9,3 +9,6 @@ data/
 probe-report*.json
 .DS_Store
 *.zip
+
+# Project docs are kept locally, not in the repo
+docs/
