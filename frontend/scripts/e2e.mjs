@@ -6,11 +6,12 @@
 // Usage: pnpm e2e   (needs `pnpm preipo`, `pnpm testnet` and the frontend dev server running)
 // Env:   FRONTEND_URL (auto: :5173 then :5174), HERO_URL, TESTNET_URL, ADMIN_TOKEN, CHROME_PATH
 
+import { readFileSync } from "node:fs";
 import { chromium } from "playwright-core";
 
 const HERO = process.env.HERO_URL ?? "http://localhost:8787";
 const TESTNET = process.env.TESTNET_URL ?? "http://localhost:8788";
-const TOKEN = process.env.ADMIN_TOKEN ?? "mytesttoken12345";
+const TOKEN = process.env.ADMIN_TOKEN ?? readFileSync(new URL("../../backend/data/admin-token.txt", import.meta.url), "utf8").trim();
 const CHROME = process.env.CHROME_PATH ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 let pass = 0, fail = 0;

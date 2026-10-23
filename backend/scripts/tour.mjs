@@ -1,12 +1,13 @@
 // Guided visual check: triggers each backend feature one at a time and tells you what to
 // look for in the browser. Runs against the Pre-IPO engine (simulated fills, no real money).
 // Usage: pnpm tour   (keep the site open at the main page while it runs)
-// Env:   HERO_URL (default :8787), ADMIN_TOKEN (default mytesttoken12345), FRONTEND_URL
+// Env:   HERO_URL (default :8787), ADMIN_TOKEN (default: backend/data/admin-token.txt), FRONTEND_URL
 
+import { readFileSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 
 const HERO = process.env.HERO_URL ?? "http://localhost:8787";
-const TOKEN = process.env.ADMIN_TOKEN ?? "mytesttoken12345";
+const TOKEN = process.env.ADMIN_TOKEN ?? readFileSync(new URL("../data/admin-token.txt", import.meta.url), "utf8").trim();
 const rl = createInterface({ input: process.stdin, output: process.stdout });
 
 const B = (s) => `\x1b[1m${s}\x1b[0m`, G = (s) => `\x1b[32m${s}\x1b[0m`, Y = (s) => `\x1b[33m${s}\x1b[0m`, D = (s) => `\x1b[2m${s}\x1b[0m`;

@@ -1,11 +1,13 @@
 // Smoke test against running engines: every public, admin and personal-mode route.
 // Usage: pnpm smoke            (expects `pnpm preipo` on :8787 and `pnpm testnet` on :8788)
-// Env:   HERO_URL, TESTNET_URL, ADMIN_TOKEN (default mytesttoken12345)
+// Env:   HERO_URL, TESTNET_URL, ADMIN_TOKEN (default: backend/data/admin-token.txt)
 // Safe to run any time: admin actions are a dry run plus a pause that is resumed straight away.
+
+import { readFileSync } from "node:fs";
 
 const HERO = process.env.HERO_URL ?? "http://localhost:8787";
 const TESTNET = process.env.TESTNET_URL ?? "http://localhost:8788";
-const TOKEN = process.env.ADMIN_TOKEN ?? "mytesttoken12345";
+const TOKEN = process.env.ADMIN_TOKEN ?? readFileSync(new URL("../data/admin-token.txt", import.meta.url), "utf8").trim();
 
 let pass = 0, fail = 0;
 const ok = (name, detail = "") => { pass++; console.log(`  \x1b[32mPASS\x1b[0m ${name}${detail ? `  \x1b[2m${detail}\x1b[0m` : ""}`); };

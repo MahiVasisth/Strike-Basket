@@ -163,6 +163,7 @@ cd backend
 pnpm test                    # 45 tests
 pnpm preipo                  # Pre-IPO on live mainnet prices, simulated fills. No keys needed. :8787
 pnpm testnet                 # testnet engine + personal mode (Builder Connect). :8788
+# Both create an admin token once in data/admin-token.txt (or set ADMIN_TOKEN). WATCH=yes reloads on edits.
 
 # Web app (second terminal)
 cd frontend
