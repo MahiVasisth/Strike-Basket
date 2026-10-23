@@ -38,6 +38,11 @@ describe("mainnet write lock", () => {
     expect(() => loadConfig({ ...keys, STRIKE_ENV: "mainnet", EXECUTION_MODE: "live", STRIKE_VAULT_ID: "v" })).toThrow(/read-only/);
   });
 
+  it("blank values count as unset, so run-preipo.sh can strip the testnet vault from .env", () => {
+    const c = loadConfig({ STRIKE_ENV: "mainnet", STRIKE_API_PUBLIC_KEY: "", STRIKE_API_PRIVATE_KEY: "", STRIKE_VAULT_ID: "", EXECUTION_MODE: "shadow" });
+    expect([c.STRIKE_API_PUBLIC_KEY, c.STRIKE_VAULT_ID, c.EXECUTION_MODE]).toEqual([undefined, undefined, "shadow"]);
+  });
+
   it("testnet writes are allowed", async () => {
     const { client, sent } = clientFor({ STRIKE_ENV: "testnet" });
     await client.setLeverage("BTC-USD", 2, "v");

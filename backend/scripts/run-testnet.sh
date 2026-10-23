@@ -5,8 +5,7 @@ cd "$(dirname "$0")/.." || exit 1
 mkdir -p data
 # The personal-mode secret is created once and reused: changing it disconnects every user.
 [ -f data/personal-secret.txt ] || openssl rand -hex 32 > data/personal-secret.txt
-# Testnet API wallet, vault ID and overrides (gitignored). EXECUTION_MODE=live sends real testnet orders.
-[ -f data/testnet.env ] && { set -a; . ./data/testnet.env; set +a; }
+# API wallet, vault ID and EXECUTION_MODE come from backend/.env (gitignored).
 # Admin token: set ADMIN_TOKEN, or one is created once in data/admin-token.txt and reused.
 [ -n "$ADMIN_TOKEN" ] || { [ -f data/admin-token.txt ] || openssl rand -hex 24 > data/admin-token.txt; ADMIN_TOKEN="$(cat data/admin-token.txt)"; }
 STRIKE_ENV=testnet BASKET_ID=crypto-majors MAX_SPREAD_BPS=300 CYCLE_SECONDS="${CYCLE_SECONDS:-60}" \

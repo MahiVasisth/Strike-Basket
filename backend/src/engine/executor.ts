@@ -202,7 +202,9 @@ export class Executor {
     const legs = this.store.legsForRun(runId);
     const filled = legs.filter((l) => l.status === "filled").length;
     if (filled === legs.length) return "done";
-    if (filled > 0 || legs.some((l) => l.status === "partial" || l.status === "sent")) return "partial";
+    // A market order canceled at the slippage cap may still have filled part of its size.
+    const someFill = legs.some((l) => l.status === "partial" || l.status === "sent" || Number(l.filled_qty ?? 0) > 0);
+    if (filled > 0 || someFill) return "partial";
     return "failed";
   }
 

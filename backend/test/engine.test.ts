@@ -4,7 +4,7 @@ import { parseBasket } from "../src/core/basket.js";
 import { Store } from "../src/db/db.js";
 import { BasketEngine } from "../src/engine/engine.js";
 import { EventBus } from "../src/engine/events.js";
-import { parseOrderState } from "../src/engine/executor.js";
+import { Executor, parseOrderState } from "../src/engine/executor.js";
 import type { StrikeClient } from "../src/strike/client.js";
 
 const basket = parseBasket({
@@ -170,5 +170,16 @@ describe("parseOrderState", () => {
   it("reads the live testnet PascalCase shape", () => {
     const live = { ID: 243163077, ClientOrderID: "bk-probe-mvkjtow8", Status: "filled", Type: "market", Size: "0.00141", Filled: "0.00141", Price: "81803.2812", StopPrice: "0" };
     expect(parseOrderState(live)).toEqual({ status: "filled", orderId: "243163077", filledQty: "0.00141", avgPrice: "81803.2812" });
+  });
+});
+
+describe("Executor.summarize", () => {
+  const summarize = (legs: { status: string; filled_qty: string | null }[]) =>
+    new Executor({} as never, {} as never, undefined, { legsForRun: () => legs } as never, {} as never).summarize("r");
+  it("counts a leg canceled at the slippage cap after a partial fill as partial, not failed", () => {
+    // Live testnet: ETH 0.318 ordered, 0.216 filled, rest canceled.
+    expect(summarize([{ status: "canceled", filled_qty: "0.216" }, { status: "canceled", filled_qty: "0.00854" }])).toBe("partial");
+    expect(summarize([{ status: "canceled", filled_qty: null }, { status: "rejected", filled_qty: "0" }])).toBe("failed");
+    expect(summarize([{ status: "filled", filled_qty: "1" }])).toBe("done");
   });
 });

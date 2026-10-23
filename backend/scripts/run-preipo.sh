@@ -5,6 +5,8 @@ cd "$(dirname "$0")/.." || exit 1
 mkdir -p data
 # Admin token: set ADMIN_TOKEN, or one is created once in data/admin-token.txt and reused.
 [ -n "$ADMIN_TOKEN" ] || { [ -f data/admin-token.txt ] || openssl rand -hex 24 > data/admin-token.txt; ADMIN_TOKEN="$(cat data/admin-token.txt)"; }
+# Always paper: blank the vault and keys that backend/.env sets for the testnet engine.
+STRIKE_VAULT_ID= STRIKE_API_PUBLIC_KEY= STRIKE_API_PRIVATE_KEY= EXECUTION_MODE=shadow DRIFT_THRESHOLD_BPS=500 MAX_SPREAD_BPS=50 \
 STRIKE_ENV=mainnet BASKET_ID=preipo SHADOW_EQUITY_USD=5000 CYCLE_SECONDS="${CYCLE_SECONDS:-60}" \
 DB_PATH=data/mainnet-paper.db PORT=8787 ADMIN_TOKEN="$ADMIN_TOKEN" \
 exec pnpm "$([ "$WATCH" = yes ] && echo dev || echo start)"
