@@ -4,15 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { ApiError, createApi, testnetApi, type MeView, type RunSummary } from "../lib/api";
 import { colorsFor } from "../lib/colors";
 import { ago, shortAddr, usd, warningText } from "../lib/format";
-import { safeStorage, useNow } from "../lib/hooks";
+import { useNow } from "../lib/hooks";
+import { clearSession, disconnect as disconnectSession, sessionToken, setSession } from "../lib/session";
 import { DriftGauge } from "../components/Gauge";
-import { ADDRESS_KEY, TOKEN_KEY } from "../components/Layout";
 import { OrbitRing } from "../components/OrbitRing";
 import { GatesList, HoldingsTable, LogList } from "../components/sections";
 import { Button, CardTitle, Chip, ErrorNote, Glass, LinkButton, Page, Skeleton } from "../components/ui";
 
-const local = safeStorage("local");
-export const meApi = () => createApi(testnetApi!.base, local.get(TOKEN_KEY) ?? undefined);
+export const meApi = () => createApi(testnetApi!.base, sessionToken() ?? undefined);
 
 /** "My basket" (FRONTEND.md §1.6). Private data has no SSE, so it polls every 15 s. */
 export function MePage() {
@@ -25,14 +24,12 @@ export function MePage() {
   const listings = useQuery({ queryKey: [testnetApi!.base, "baskets"], queryFn: testnetApi!.baskets });
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
   const [budget, setBudget] = useState<string | null>(null);
 
   const unauthorized = me.error instanceof ApiError && me.error.status === 401;
   useEffect(() => {
     if (!unauthorized) return;
-    local.set(TOKEN_KEY, null);
-    local.set(ADDRESS_KEY, null);
+    clearSession();
     nav("/connect", { replace: true });
   }, [unauthorized, nav]);
 
@@ -52,28 +49,19 @@ export function MePage() {
   const disconnect = async () => {
     if (!window.confirm("Disconnect? Trading stops and our key is deleted. Your positions stay in your Strike account.")) return;
     try {
-      const r = await api.del<{ note: string }>("/api/me");
-      local.set(TOKEN_KEY, null);
-      local.set(ADDRESS_KEY, null);
-      setNote(r.note);
+      const note = await disconnectSession();
+      nav("/connect", { replace: true, state: { notice: note } });
     } catch (e) {
       setErr(`Disconnect didn't work: ${(e as Error).message}. Try again.`);
     }
   };
 
-  if (note)
-    return (
-      <Page className="max-w-2xl py-20">
-        <Glass className="p-8">
-          <Chip tone="ok">disconnected</Chip>
-          <p className="mt-4 text-[15px] leading-relaxed text-text/90">{note}</p>
-          <div className="mt-6"><LinkButton to="/" variant="plasma">Back to the basket</LinkButton></div>
-        </Glass>
-      </Page>
-    );
 
   const v = me.data, u = v?.user, s = v?.state;
-  if (u && local.get(ADDRESS_KEY) !== u.address) local.set(ADDRESS_KEY, u.address);
+  useEffect(() => {
+    const t = sessionToken();
+    if (u && t) setSession(t, u.address); // keep the header's address in step with the backend
+  }, [u?.address]); // eslint-disable-line react-hooks/exhaustive-deps
   const listing = listings.data?.find((b) => b.id === u?.basketId);
   const constituents = listing?.constituents ?? [];
   const color = colorsFor(constituents);

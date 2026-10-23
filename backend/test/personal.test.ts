@@ -238,6 +238,19 @@ describe("personal mode (Builder Connect, fake Strike testnet)", () => {
     expect(r.statusCode).toBe(403);
   });
 
+  it("lets the browser call PUT and DELETE /api/me (CORS preflight)", async () => {
+    const { app } = await setup();
+    for (const method of ["PUT", "DELETE"]) {
+      const r = await app.inject({
+        method: "OPTIONS",
+        url: "/api/me",
+        headers: { origin: "http://localhost:5173", "access-control-request-method": method, "access-control-request-headers": "authorization,content-type" },
+      });
+      expect(r.statusCode).toBe(204);
+      expect(String(r.headers["access-control-allow-methods"])).toContain(method);
+    }
+  });
+
   it("encrypts secrets with AES-GCM and detects tampering", () => {
     const blob = encryptSecret("deadbeef", SECRET);
     expect(blob).not.toContain("deadbeef");

@@ -119,6 +119,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 }
 
 export function vaultUrl(c: Config): string | null {
-  const template = c.STRIKE_VAULT_URL_TEMPLATE ?? `${c.urls.app}/vaults/{vaultId}`;
+  // The query string matters: Strike's CDN serves a stale cached "Vault Not Found" page for the bare
+  // /vaults/{id} URL of our vault (seen 23 Oct 2026); with a query the page loads the vault live.
+  const template = c.STRIKE_VAULT_URL_TEMPLATE ?? `${c.urls.app}/vaults/{vaultId}?ref=strikebaskets`;
   return c.STRIKE_VAULT_ID ? template.replace("{vaultId}", c.STRIKE_VAULT_ID) : null;
 }

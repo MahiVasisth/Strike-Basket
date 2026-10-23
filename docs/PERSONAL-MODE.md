@@ -16,7 +16,7 @@
 3. **Sign.** The user signs `messageToSign` in their wallet. It's a message signature: no transaction, no gas, no funds move.
    - Ethereum: EIP-191 `personal_sign` (hex)
    - Solana: Ed25519 over the message bytes (base58)
-   - Cardano: CIP-30 `signData` → `"{coseSign1Hex}:{coseKeyHex}"`
+   - Cardano: CIP-30 `signData(changeAddressHex, hex(message))` → `"{coseSign1Hex}:{coseKeyHex}"`; the wallet must be on **Preprod** (network id 0) and the address sent to Strike is the change address in bech32 (`addr_test1…`), exactly as Strike's own app does
 4. **Confirm.** `POST /api/personal/connect/confirm {connectId, signature}`. The backend calls Strike `verify-signature`. Strike creates the account if needed, approves our builder code, revokes older API wallets for this builder, and links **our generated public key** as the account's API wallet. We check that the linked key is ours, store the private key **AES-256-GCM encrypted**, and return a **session token** (stored server-side only as a SHA-256 hash).
 5. **Run.** The same `BasketEngine` + `Executor` as the vault, on the user's account:
    - size = **min(budget, account equity) × 0.9**, split by basket weights
@@ -85,7 +85,9 @@ Run it on the **testnet instance** (`:8788`), next to the testnet vault or testn
 | Request field is `fee_share_bps` (skill package says `max_fee_bps`) | ✅ from docs.strikefinance.org |
 | Full flow, signing, fee header, basket-only management, privacy, revoke | ✅ end-to-end tests against a fake Strike (`test/personal.test.ts`) |
 | A real wallet connect on testnet | ✅ 22 Oct: builder code `StrikeBasket`, throwaway EVM wallet → Strike verified the EIP-191 signature, linked our key, and authenticated calls work (`pnpm connect-test`) |
-| A real trade in a connected account | ⏳ needs a connected wallet with testnet funds |
+| Cardano (Lace) connect on testnet | ✅ 23 Oct: `pnpm connect-test --chain cardano` signs like Lace (CIP-8 COSE_Sign1 over a Preprod base address); Strike verified it and linked our key |
+| Full browser flow, both wallets | ✅ 23 Oct: `pnpm e2e:personal` drives the real web app → testnet engine → Strike: connect → sign → `/me` → header Disconnect → backend revokes. Wallet extensions are shimmed; Strike checks every signature for real |
+| A real trade in a connected account | ⏳ needs a connected wallet with testnet funds (Lace: test ADA from the Cardano Preprod faucet; MetaMask: USDC on Ethereum Sepolia) |
 | Builder fee actually credited on testnet fills | ⏳ check the builder dashboard after the first real run |
 
 ## Limits (say these plainly)

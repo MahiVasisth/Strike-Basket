@@ -84,7 +84,12 @@ function vaultInfo(engine: BasketEngine) {
 export async function buildServer(engine: BasketEngine, bus: EventBus, personal?: PersonalManager) {
   const { cfg, store, basket } = engine;
   const app = Fastify({ logger: { level: cfg.LOG_LEVEL } });
-  await app.register(cors, { origin: cfg.CORS_ORIGIN === "*" ? true : cfg.CORS_ORIGIN.split(",") });
+  // @fastify/cors allows only GET/HEAD/POST by default; the web app also needs PUT /api/me (budget)
+  // and DELETE /api/me (disconnect), which browsers otherwise block at the preflight.
+  await app.register(cors, {
+    origin: cfg.CORS_ORIGIN === "*" ? true : cfg.CORS_ORIGIN.split(","),
+    methods: ["GET", "HEAD", "POST", "PUT", "DELETE"],
+  });
 
   const requireAdmin = async (req: FastifyRequest, reply: FastifyReply) => {
     const token = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");

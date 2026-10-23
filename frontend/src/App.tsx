@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { heroApi, testnetApi, type RunDetail } from "./lib/api";
-import { safeStorage } from "./lib/hooks";
 import { InstancesProvider, useInstances } from "./lib/instances";
 import { LiveProvider } from "./lib/live";
-import { Layout, TOKEN_KEY } from "./components/Layout";
+import { Layout } from "./components/Layout";
+import { useSession } from "./lib/session";
 import { LinkButton, Page } from "./components/ui";
 import { AdminPage } from "./pages/AdminPage";
 import { BasketPage } from "./pages/BasketPage";
@@ -28,7 +28,7 @@ function TestnetOnly({ children }: { children: React.ReactNode }) {
 }
 
 function RequireToken({ children }: { children: React.ReactNode }) {
-  return safeStorage("local").get(TOKEN_KEY) ? <>{children}</> : <Navigate to="/connect" replace />;
+  return useSession().token ? <>{children}</> : <Navigate to="/connect" replace />;
 }
 
 function NotFound() {

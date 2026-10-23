@@ -28,6 +28,7 @@ Server time: `GET /v2/time` → `{serverTime}` (REST base, not `/price`). Rate l
 | `GET /v2/order` response | undocumented | parsed leniently (`status`/`X`, `order_id`, `filled_size`…) |
 
 ## Vaults
+- **Vault page links need a query string.** On 23 Oct the bare `testnet.strikefinance.org/vaults/<id>` for our vault served a stale cached "Vault Not Found" (`x-vercel-cache: HIT`, pre-rendered page), while `/vaults/<id>?ref=strikebaskets` loads the vault live with Deposit/Withdraw. Our default link includes `?ref=strikebaskets`. Worth reporting to Strike.
 - Public: `GET /v2/vaults`, `/v2/vault/{id}`, `/v2/vault/{id}/portfolio`, `/history`, `/depositors`. Account, positions and history accept `?vault_id=` **without auth**.
 - `/v2/vault/{id}` returns `share_price, equity, total_shares, depositors, leader_commission_bps, min_deposit, lockup_days, status`.
 - **Vault accounts default to `isolated`, 10x** (`default_margin_mode`, `default_leverage`).

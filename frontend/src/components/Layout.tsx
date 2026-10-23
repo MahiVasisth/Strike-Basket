@@ -1,15 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { heroApi, testnetApi } from "../lib/api";
 import { shortAddr } from "../lib/format";
 import { useInstances } from "../lib/instances";
 import { useLive } from "../lib/live";
+import { disconnect, useSession } from "../lib/session";
+import { ConnectModal } from "./ConnectModal";
 import { EnvPill, LinkButton, Page } from "./ui";
-
-export const TOKEN_KEY = "sb.personalToken";
-/** Wallet address saved at connect time, shown in the header once connected. */
-export const ADDRESS_KEY = "sb.personalAddress";
 
 export function Logo() {
   return (
@@ -40,8 +38,18 @@ export function Layout() {
   const api = onTestnet ? testnetApi! : heroApi;
   const basket = useQuery({ queryKey: [api.base, "basket"], queryFn: api.basket, refetchInterval: 60_000 });
   const b = basket.data;
-  const token = localToken();
-  const address = token ? localGet(ADDRESS_KEY) : null;
+  const { token, address } = useSession();
+  const [connecting, setConnecting] = useState(false);
+  const nav = useNavigate();
+  const signOut = async () => {
+    if (!window.confirm("Disconnect your wallet? The bot stops trading your account and we delete our key. Your positions stay in your Strike account.")) return;
+    try {
+      const note = await disconnect();
+      nav("/connect", { state: { notice: note } });
+    } catch (e) {
+      window.alert(`Disconnect didn't work: ${(e as Error).message}. Try again.`);
+    }
+  };
 
   const links: [string, string][] = [
     ["/", "Pre-IPO"],
@@ -51,6 +59,7 @@ export function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <ConnectModal open={connecting} onClose={() => setConnecting(false)} />
       <header className="sticky top-0 z-40 border-b border-edge bg-black/70 backdrop-blur-xl">
         <Page className="flex h-[68px] items-center justify-between gap-4">
           <Logo />
@@ -70,9 +79,13 @@ export function Layout() {
             {b && <span className="hidden md:inline-flex"><EnvPill basket={b} /></span>}
             {personal && (
               <span className="hidden sm:inline-flex">
-                <LinkButton to={token ? "/me" : "/connect"} className="!py-2 !text-[13.5px]">
-                  <WalletLabel token={token} address={address} />
-                </LinkButton>
+                {token ? (
+                  <WalletMenu address={address} onDisconnect={signOut} />
+                ) : (
+                  <button onClick={() => setConnecting(true)} className="glass inline-flex items-center !rounded-full px-4 py-2 text-[13.5px] font-medium text-text transition hover:bg-white/[0.08]">
+                    Connect wallet
+                  </button>
+                )}
               </span>
             )}
             {b?.vault.url && <LinkButton href={b.vault.url} variant="white" className="!py-2 !text-[13.5px]">Deposit on Strike ↗</LinkButton>}
@@ -89,10 +102,20 @@ export function Layout() {
                   {label}
                 </NavLink>
               ))}
-              {personal && (
-                <Link to={token ? "/me" : "/connect"} className="rounded-xl px-3 py-2.5 text-[15px] text-violet">
+              {personal && token && (
+                <Link to="/me" className="rounded-xl px-3 py-2.5 text-[15px] text-violet">
                   <WalletLabel token={token} address={address} />
                 </Link>
+              )}
+              {personal && !token && (
+                <button onClick={() => { setMenu(false); setConnecting(true); }} className="rounded-xl px-3 py-2.5 text-left text-[15px] text-violet">
+                  Connect wallet
+                </button>
+              )}
+              {personal && token && (
+                <button onClick={signOut} className="rounded-xl px-3 py-2.5 text-left text-[15px] text-dim hover:text-bad">
+                  Disconnect wallet
+                </button>
               )}
             </Page>
           </nav>
@@ -146,14 +169,59 @@ export function Layout() {
   );
 }
 
-function localGet(key: string) {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
+/** Connected wallet in the header: opens a small menu with "My basket" and "Disconnect". */
+function WalletMenu({ address, onDisconnect }: { address: string | null; onDisconnect: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const loc = useLocation();
+  useEffect(() => setOpen(false), [loc.pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="glass inline-flex items-center gap-2 !rounded-full px-4 py-2 text-[13.5px] text-text transition hover:bg-white/[0.08]"
+      >
+        <WalletLabel token="x" address={address} />
+        <svg viewBox="0 0 20 20" className={`h-3.5 w-3.5 text-dim transition ${open ? "rotate-180" : ""}`} fill="currentColor" aria-hidden>
+          <path d="M5.5 7.5 10 12l4.5-4.5" stroke="currentColor" strokeWidth="1.6" fill="none" />
+        </svg>
+      </button>
+      {open && (
+        <div role="menu" className="glass absolute right-0 top-[calc(100%+8px)] z-50 w-56 !rounded-2xl p-1.5 shadow-2xl">
+          {address && <p className="num truncate px-3 pb-1.5 pt-1 text-[12px] text-dim" title={address}>{address}</p>}
+          <Link role="menuitem" to="/me" className="block rounded-xl px-3 py-2 text-[13.5px] text-text hover:bg-white/[0.08]">
+            My basket
+          </Link>
+          <button
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onDisconnect();
+            }}
+            className="block w-full rounded-xl px-3 py-2 text-left text-[13.5px] text-bad hover:bg-bad/10"
+          >
+            Disconnect
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
-const localToken = () => localGet(TOKEN_KEY);
 
 function WalletLabel({ token, address }: { token: string | null; address: string | null }) {
   if (!token) return <>Connect wallet</>;

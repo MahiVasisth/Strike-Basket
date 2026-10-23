@@ -145,7 +145,7 @@ describe("vault info for the Invest card", () => {
     const { vault } = (await app.inject({ url: "/api/basket" })).json();
     expect(vault).toEqual({
       id: "v1",
-      url: "https://testnet.strikefinance.org/vaults/v1",
+      url: "https://testnet.strikefinance.org/vaults/v1?ref=strikebaskets",
       listUrl: "https://testnet.strikefinance.org/vaults",
       name: "Strike Baskets · Test",
       status: "active",

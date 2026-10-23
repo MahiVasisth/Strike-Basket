@@ -29,6 +29,9 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
     devDependencies:
+      '@noble/hashes':
+        specifier: 1.4.0
+        version: 1.4.0
       '@types/node':
         specifier: ^26.6.5
         version: 26.6.5
@@ -317,6 +320,10 @@ packages:
   '@noble/curves@1.9.1':
     resolution: {integrity: sha512-k11yZxZg+t+gWvBbIswW0yoJlu8cHOC7dhunwOzoWH/mXGBiYyR4YY6hAEK/3EUs4UpB8la1RfdRpeGsFHkWsA==}
     engines: {node: ^14.21.3 || >=16}
+
+  '@noble/hashes@1.4.0':
+    resolution: {integrity: sha512-V1JJ1WTRUqHHrOSh597hURcMqVKVGL/ea3kv0gSnEdsEZ0/+VyPghM1lMNGc00z7CIQorSvbKpuJkxvuHbvdbg==}
+    engines: {node: '>= 16'}
 
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
@@ -1481,6 +1488,8 @@ snapshots:
   '@noble/curves@1.9.1':
     dependencies:
       '@noble/hashes': 1.8.0
+
+  '@noble/hashes@1.4.0': {}
 
   '@noble/hashes@1.8.0': {}
 

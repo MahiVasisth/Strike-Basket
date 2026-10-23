@@ -48,7 +48,11 @@ export function dateTime(ts: number | null | undefined) {
 }
 
 export const shortId = (id: string, keep = 6) => (id.length <= keep * 2 + 1 ? id : `${id.slice(0, keep)}…${id.slice(-4)}`);
-export const shortAddr = (a: string) => (a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a);
+/** 0x1234…abcd for Ethereum; addr_test1qp…xyz9 for Cardano bech32 (the prefix alone says nothing). */
+export const shortAddr = (a: string) => {
+  const head = a.startsWith("addr") ? a.indexOf("1") + 3 : 6;
+  return a.length > head + 8 ? `${a.slice(0, head)}…${a.slice(-4)}` : a;
+};
 export const ticker = (symbol: string) => symbol.replace(/-USD$/, "");
 
 /** Environment badge text, per docs/FRONTEND.md §1.1. */
