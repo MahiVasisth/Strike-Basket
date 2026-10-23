@@ -21,7 +21,8 @@ export interface OrderState {
   avgPrice?: string;
 }
 
-/** GET /v2/order's response shape is undocumented; read the common field spellings. */
+/** GET /v2/order's response shape is undocumented; read the common field spellings.
+ *  Live testnet returns PascalCase: { ID, Status, Filled, Price } (Price = fill price for market orders). */
 export function parseOrderState(raw: Record<string, unknown> | null | undefined): OrderState | null {
   if (!raw) return null;
   const o = (raw.order as Record<string, unknown>) ?? raw;
@@ -29,13 +30,13 @@ export function parseOrderState(raw: Record<string, unknown> | null | undefined)
     for (const k of keys) if (o[k] !== undefined && o[k] !== null && o[k] !== "") return String(o[k]);
     return undefined;
   };
-  const status = pick("status", "order_status", "X");
+  const status = pick("status", "order_status", "Status", "X");
   if (!status) return null;
   return {
     status: status.toLowerCase(),
-    orderId: pick("order_id", "orderId", "id", "i"),
-    filledQty: pick("filled_size", "executed_qty", "executedQty", "filled_qty", "cum_qty", "z"),
-    avgPrice: pick("avg_price", "average_price", "avgPrice", "ap"),
+    orderId: pick("order_id", "orderId", "id", "ID", "i"),
+    filledQty: pick("filled_size", "executed_qty", "executedQty", "filled_qty", "cum_qty", "Filled", "z"),
+    avgPrice: pick("avg_price", "average_price", "avgPrice", "ap", "Price"),
   };
 }
 

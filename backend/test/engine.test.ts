@@ -167,4 +167,8 @@ describe("parseOrderState", () => {
     expect(parseOrderState({ order: { X: "PARTIALLY_FILLED", i: 9, z: "0.5" } })?.status).toBe("partially_filled");
     expect(parseOrderState({})).toBeNull();
   });
+  it("reads the live testnet PascalCase shape", () => {
+    const live = { ID: 243163077, ClientOrderID: "bk-probe-mvkjtow8", Status: "filled", Type: "market", Size: "0.00141", Filled: "0.00141", Price: "81803.2812", StopPrice: "0" };
+    expect(parseOrderState(live)).toEqual({ status: "filled", orderId: "243163077", filledQty: "0.00141", avgPrice: "81803.2812" });
+  });
 });
