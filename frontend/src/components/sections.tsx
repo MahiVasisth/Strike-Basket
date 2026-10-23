@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import type { Basket, BasketListing, Gate, Health, Leg, RunDetail, RunSummary, WeightRow } from "../lib/api";
+import type { Api, Basket, BasketListing, Gate, Health, Leg, RunDetail, RunSummary, WeightRow } from "../lib/api";
 import { testnetApi } from "../lib/api";
 import { colorsFor, marketColor } from "../lib/colors";
 import { ago, bpsAsPct, engineStale, gateFailureText, price, qty, skipText, ticker, triggerLabel, usd, pct, warningText } from "../lib/format";
@@ -137,6 +137,141 @@ export function ProofCard({ className = "" }: { className?: string }) {
 }
 
 // ---------- rules ----------
+
+// ---------- order preview: what the bot would buy for an amount (plan only) ----------
+
+/**
+ * Pre-IPO on mainnet is never traded: instead of a paper book, visitors type an amount and see the exact
+ * orders the engine would place right now on live Strike prices (GET /api/preview). Execution is shown
+ * for real on the testnet vault.
+ */
+export function OrderPreview({ api, basket, amount, onAmount, className = "" }: { api: Api; basket: Basket; amount: string; onAmount: (v: string) => void; className?: string }) {
+  const { testnetUp, personal } = useInstances();
+  const [debounced, setDebounced] = useState(amount);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(amount), 350);
+    return () => clearTimeout(t);
+  }, [amount]);
+  const n = Number(debounced);
+  const valid = Number.isFinite(n) && n > 0 && n <= 1_000_000;
+  const q = useQuery({
+    queryKey: [api.base, "preview", basket.id, debounced],
+    queryFn: () => api.preview(n, basket.id),
+    enabled: valid,
+    refetchInterval: 15_000,
+    placeholderData: keepPreviousData,
+  });
+  const p = valid ? q.data : undefined;
+  const color = colorsFor(basket.constituents);
+  const belowMin = !!p && p.amountUsd < p.minAmountUsd;
+  const failing = p?.gates.filter((g) => !g.ok) ?? [];
+
+  return (
+    <Glass className={`p-6 ${className}`}>
+      <CardTitle right={<Chip tone="sim">plan only</Chip>}>Order preview · live {basket.env} prices</CardTitle>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] [&>*]:min-w-0">
+        <div>
+          <label className="block">
+            <span className="text-[12.5px] text-dim">If you invested</span>
+            <div className="mt-1.5 flex items-center rounded-2xl border border-edge bg-black px-4 focus-within:border-violet">
+              <span className="num text-[24px] text-dim">$</span>
+              <input
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => onAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                className="num w-full bg-transparent px-2 py-3 text-[26px] text-text outline-none"
+                aria-label="Amount to preview in USD"
+              />
+            </div>
+          </label>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {[100, 500, 1000, 5000].map((v) => (
+              <button key={v} onClick={() => onAmount(String(v))} className={`num rounded-full border px-3 py-1 text-[12px] transition ${amount === String(v) ? "border-violet text-text" : "border-edge text-dim hover:text-text"}`}>
+                ${v.toLocaleString()}
+              </button>
+            ))}
+          </div>
+          <p className="mt-4 text-[13px] leading-relaxed text-dim">
+            The exact orders the bot would place right now: {basket.rules.grossExposure}× of the amount, split by the published weights, priced at the live ask with
+            Strike's {((p?.takerFeeBps ?? 5) / 100).toFixed(2)}% taker fee. <span className="text-text">Nothing is traded.</span>
+          </p>
+          {p && (
+            <p className={`mt-3 text-[12.5px] ${belowMin ? "text-warn" : "text-dim"}`}>
+              Minimum for every leg to clear Strike's order sizes: {usd(p.minAmountUsd, 0)}
+            </p>
+          )}
+        </div>
+
+        <div>
+          {!valid ? (
+            <Empty>Enter an amount to see the orders.</Empty>
+          ) : !p ? (
+            q.error ? <p className="text-[13.5px] text-bad">{(q.error as Error).message}</p> : <SkeletonRows rows={5} />
+          ) : (
+            <>
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="text-left text-[12px] text-dim">
+                    <th className="pb-2 font-normal">Buy</th>
+                    <th className="pb-2 text-right font-normal">Qty</th>
+                    <th className="hidden pb-2 text-right font-normal sm:table-cell">Est. price</th>
+                    <th className="pb-2 text-right font-normal">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y divide-edge ${belowMin ? "opacity-50" : ""}`}>
+                  {p.legs.map((l) => (
+                    <tr key={l.symbol}>
+                      <td className="py-2.5">
+                        <span className="flex items-center gap-2">
+                          <GlowDot color={color(l.symbol)} />
+                          <span className="truncate text-text">{l.name}</span>
+                          <span className="num text-[11.5px] text-dim">{ticker(l.symbol)}</span>
+                        </span>
+                      </td>
+                      <td className="num py-2.5 text-right">{qty(l.qty)}</td>
+                      <td className="num hidden py-2.5 text-right text-dim sm:table-cell">{price(l.price)}</td>
+                      <td className="num py-2.5 text-right text-text">{usd(l.notionalUsd)}</td>
+                    </tr>
+                  ))}
+                  {p.skipped.map((s) => (
+                    <tr key={s.symbol} className="text-dim">
+                      <td className="py-2.5">
+                        <span className="flex items-center gap-2"><GlowDot color={color(s.symbol)} />{basket.constituents.find((c) => c.symbol === s.symbol)?.name ?? ticker(s.symbol)}</span>
+                      </td>
+                      <td colSpan={3} className="py-2.5 text-right text-[12px] text-warn">{skipText[s.reason] ?? s.reason} ({usd(s.notionalUsd)})</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <dl className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                <StatTile label="Invested" value={usd(p.totals.notionalUsd)} />
+                <StatTile label="Fees" value={usd(p.totals.feeUsd)} />
+                <StatTile label="Kept as margin" value={usd(p.totals.uninvestedUsd)} />
+              </dl>
+              <div className="mt-3 space-y-1 text-[12.5px]">
+                {failing.length === 0 ? (
+                  <p className="text-ok">✓ Every market passes the checks right now (spread, price vs book, fresh book).</p>
+                ) : (
+                  failing.map((g) => (
+                    <p key={g.symbol} className="text-warn">
+                      {ticker(g.symbol)}: {g.failures.map(gateFailureText).join(", ")}. The bot would wait for a better book.
+                    </p>
+                  ))
+                )}
+                {belowMin && <p className="text-warn">Below {usd(p.minAmountUsd, 0)}, some legs are too small for Strike, so the basket would be incomplete.</p>}
+                {p.warnings.map((w) => <p key={w} className="text-dim">{warningText(w)}</p>)}
+              </div>
+            </>
+          )}
+          <div className="mt-5 flex flex-wrap gap-2">
+            {testnetUp && <LinkButton to="/testnet" variant="plasma">See the engine trade for real on testnet →</LinkButton>}
+            {personal && <LinkButton to="/connect">Run Crypto Majors in your Strike account</LinkButton>}
+          </div>
+        </div>
+      </div>
+    </Glass>
+  );
+}
 
 // ---------- invest: exactly where to put money ----------
 

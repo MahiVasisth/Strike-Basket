@@ -58,7 +58,8 @@ export const ticker = (symbol: string) => symbol.replace(/-USD$/, "");
 /** Environment badge text, per docs/FRONTEND.md §1.1. */
 export function envBadge(b: Pick<Basket, "env" | "mode" | "source">): { label: string; detail: string; tone: "paper" | "testnet" | "live" | "shadow" } {
   if (b.source === "paper" && b.env === "testnet") return { label: "TESTNET · PAPER", detail: "testnet prices, simulated fills", tone: "testnet" };
-  if (b.source === "paper") return { label: "PAPER", detail: "live mainnet prices, simulated fills", tone: "paper" };
+  // Mainnet without a vault: the page is an order preview on live prices; nothing is traded or simulated on it.
+  if (b.source === "paper") return { label: "MAINNET", detail: "live prices · plan only", tone: "paper" };
   if (b.env === "testnet" && b.mode === "live") return { label: "TESTNET", detail: "live Strike vault", tone: "testnet" };
   if (b.env === "mainnet" && b.mode === "live") return { label: "MAINNET", detail: "live vault", tone: "live" };
   return { label: "MAINNET", detail: "plan only (no orders sent)", tone: "shadow" };

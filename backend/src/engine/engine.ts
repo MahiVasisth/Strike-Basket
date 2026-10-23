@@ -4,7 +4,7 @@ import { checkGate, IndexWatch, type GateResult } from "../core/gates.js";
 import { planRebalance, type Filters, type Plan, type Target } from "../core/rebalancer.js";
 import type { Store } from "../db/db.js";
 import type { StrikeClient } from "../strike/client.js";
-import type { SymbolFilters, VaultRaw } from "../strike/types.js";
+import type { BookTickerRaw, MarkPriceRaw, SymbolFilters, VaultRaw } from "../strike/types.js";
 import type { EventBus } from "./events.js";
 import { Executor } from "./executor.js";
 import { PaperExchange } from "./paper.js";
@@ -63,6 +63,7 @@ export interface Snapshot {
 
 const FILTERS_TTL_MS = 10 * 60_000;
 const POST_TRADE_REFRESH_MS = 5_000;
+const QUOTES_TTL_MS = 5_000;
 
 export class BasketEngine {
   readonly executor: Executor;
@@ -139,6 +140,18 @@ export class BasketEngine {
     if (this.running) return this.running;
     this.running = this.doTick(opts).finally(() => (this.running = null));
     return this.running;
+  }
+
+  private quotes: { at: number; marks: Map<string, MarkPriceRaw>; books: Map<string, BookTickerRaw> } | null = null;
+
+  /** Live filters, marks and books for read-only features (order preview). Quotes are cached for 5 s. */
+  async marketData() {
+    const filters = await this.exchangeFilters();
+    if (!this.quotes || Date.now() - this.quotes.at > QUOTES_TTL_MS) {
+      const [marks, books] = await Promise.all([this.client.markPrices(), this.client.bookTickers()]);
+      this.quotes = { at: Date.now(), marks, books };
+    }
+    return { filters, marks: this.quotes.marks, books: this.quotes.books };
   }
 
   private async exchangeFilters() {

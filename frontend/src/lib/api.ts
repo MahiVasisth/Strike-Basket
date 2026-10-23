@@ -32,6 +32,16 @@ export interface Basket {
   };
 }
 
+/** GET /api/preview: the orders the bot would place for an amount, on live prices. Nothing is traded. */
+export interface Preview {
+  basketId: string; basketName: string; env: Env; takerFeeBps: number; ts: number;
+  amountUsd: number; bookUsd: string; minAmountUsd: number; allChecksOk: boolean; warnings: string[];
+  legs: { symbol: string; name: string; weight: number; qty: string; mark: string; price: string; notionalUsd: string; feeUsd: string }[];
+  skipped: { symbol: string; reason: string; notionalUsd: string }[];
+  totals: { notionalUsd: string; feeUsd: string; uninvestedUsd: string };
+  gates: Gate[];
+}
+
 export interface BasketListing { id: string; name: string; tagline: string; status: "live" | "coming_soon"; constituents: Constituent[] }
 
 export interface WeightRow {
@@ -133,6 +143,8 @@ export class Api {
   basket = () => this.get<Basket>("/api/basket");
   baskets = () => this.get<BasketListing[]>("/api/baskets");
   state = () => this.get<State>("/api/state");
+  preview = (amount: number, basket?: string) =>
+    this.get<Preview>(`/api/preview?amount=${encodeURIComponent(amount)}${basket ? `&basket=${encodeURIComponent(basket)}` : ""}`);
   snapshots = (since: number) => this.get<Snapshot[]>(`/api/snapshots?since=${since}&limit=2000`);
   rebalances = (limit = 50) => this.get<RunSummary[]>(`/api/rebalances?limit=${limit}`);
   rebalance = (id: string) => this.get<RunDetail>(`/api/rebalances/${encodeURIComponent(id)}`);

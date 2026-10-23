@@ -78,7 +78,9 @@ try {
 
   (await has(basket.name)) ? ok("basket name from /api/basket", basket.name) : bad("basket name", `"${basket.name}" not on page`);
   (await has(basket.tagline)) ? ok("tagline from /api/basket") : bad("tagline", "not on page");
-  const badge = basket.source === "paper" ? "PAPER" : basket.env === "testnet" ? "TESTNET" : "MAINNET";
+  // Mainnet without a vault is plan-only: an order preview instead of a paper book.
+  const planOnly = basket.source === "paper" && basket.env === "mainnet";
+  const badge = planOnly ? "plan only" : basket.source === "paper" ? "PAPER" : basket.env === "testnet" ? "TESTNET" : "MAINNET";
   (await has(badge)) ? ok("environment badge", badge) : bad("environment badge", `${badge} missing`);
 
   const body = await text();
@@ -86,6 +88,17 @@ try {
     const t = c.symbol.replace(/-USD$/, "");
     body.includes(t) ? ok(`ticker strip: ${t}`) : bad(`ticker strip: ${t}`, "missing");
   }
+  if (planOnly) {
+    const preview = (await api(HERO, "/api/preview?amount=500")).json;
+    const card = await page.locator("section", { has: page.getByText("Order preview") }).first().innerText().catch(() => "");
+    card ? ok("order preview card shown") : bad("order preview card", "missing");
+    for (const l of preview.legs) {
+      card.includes(l.name) && card.includes(l.qty.replace(/0+$/, "").replace(/\.$/, "")) ? ok(`preview order: ${l.name}`, `${l.qty} @ ${l.price}`) : bad(`preview order: ${l.name}`, "not on page");
+    }
+    card.includes("Nothing is traded") ? ok("preview says nothing is traded") : bad("plan-only wording", "missing");
+    (await has("Preview amount")) && body.includes("$500.00") ? ok("ring centre shows the preview amount") : bad("ring centre", "no preview amount");
+    !body.includes("Rebalance log") && !body.includes("Holdings against targets") ? ok("no paper book on the page") : bad("paper sections", "still shown");
+  } else {
   // The ring's centre readout sits right after its "Basket equity" / "Share price" label.
   const centre = await page.getByText(/^(Basket equity|Share price)$/).first().locator("..").innerText().catch(() => "");
   const eqShown = (centre.match(/\$([\d,]+\.\d{2,4})/) ?? [])[1];
@@ -101,6 +114,7 @@ try {
   if (runs.length) {
     const logRows = await page.locator('a[href^="/rebalances/"]').count();
     logRows >= Math.min(runs.length, 1) ? ok("rebalance log from /api/rebalances", `${logRows} rows shown · ${runs.length} in api`) : bad("rebalance log", "no rows");
+  }
   }
   (await has("Withdrawals")) ? ok("rules card from basket.rules") : bad("rules card", "missing");
 

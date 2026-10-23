@@ -4,6 +4,7 @@ import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { vaultUrl } from "../config.js";
 import { loadAllBaskets } from "../core/basket.js";
+import { previewOrders } from "../core/preview.js";
 import type { BasketEngine } from "../engine/engine.js";
 import type { EventBus } from "../engine/events.js";
 import type { RunRow, Store } from "../db/db.js";
@@ -167,6 +168,43 @@ export async function buildServer(engine: BasketEngine, bus: EventBus, personal?
       warnings: s.plan.warnings,
       paused: store.isPaused(),
     };
+  });
+
+  // Order preview: the orders the bot would place for an amount, on live prices. Read-only; nothing is sent.
+  const allBaskets = new Map(loadAllBaskets().map((b) => [b.id, b]));
+  allBaskets.set(basket.id, basket); // the basket this engine runs, even if it isn't a file in baskets/
+  app.get("/api/preview", async (req, reply) => {
+    const q = z.object({ amount: z.coerce.number().positive().max(1_000_000), basket: z.string().optional() }).safeParse(req.query);
+    if (!q.success) return reply.code(400).send({ error: "amount must be a positive number up to 1,000,000" });
+    const b = allBaskets.get(q.data.basket ?? basket.id);
+    if (!b) return reply.code(404).send({ error: `unknown basket ${q.data.basket ?? basket.id}` });
+    const { filters, marks, books } = await engine.marketData();
+    const missing = b.constituents.filter((c) => !filters.has(c.symbol)).map((c) => c.symbol);
+    if (missing.length) return reply.code(400).send({ error: `not listed on ${cfg.STRIKE_ENV}: ${missing.join(", ")}` });
+    const pick = <T>(m: Map<string, T>) => Object.fromEntries(b.constituents.flatMap((c) => (m.has(c.symbol) ? [[c.symbol, m.get(c.symbol)!]] : [])));
+    const preview = previewOrders({
+      targets: b.constituents.map((c) => ({ symbol: c.symbol, weight: c.weight, name: c.name })),
+      amountUsd: q.data.amount,
+      marks: Object.fromEntries(Object.entries(pick(marks)).map(([s, m]) => [s, m.p])),
+      books: Object.fromEntries(Object.entries(pick(books)).map(([s, k]) => [s, { bid: k.bidPrice, ask: k.askPrice, timeMs: k.time }])),
+      filters: pick(filters),
+      params: {
+        grossExposure: cfg.GROSS_EXPOSURE,
+        minNotionalBuffer: cfg.MIN_NOTIONAL_BUFFER,
+        maxLegNotional: cfg.MAX_LEG_NOTIONAL_USD,
+        maxRunNotional: cfg.MAX_RUN_NOTIONAL_USD,
+      },
+      takerFeeBps: cfg.PAPER_TAKER_FEE_BPS,
+      gateLimits: {
+        maxSpreadBps: cfg.MAX_SPREAD_BPS,
+        maxMarkMidDeviationBps: cfg.MAX_MARK_MID_DEVIATION_BPS,
+        maxBookAgeSec: cfg.MAX_BOOK_AGE_SEC,
+        indexFrozenMin: cfg.INDEX_FROZEN_MIN,
+        blockOnFrozenIndex: cfg.BLOCK_ON_FROZEN_INDEX,
+      },
+      nowMs: engine.client.now(),
+    });
+    return { basketId: b.id, basketName: b.name, env: cfg.STRIKE_ENV, takerFeeBps: cfg.PAPER_TAKER_FEE_BPS, ts: Date.now(), ...preview };
   });
 
   app.get("/api/snapshots", async (req) => {

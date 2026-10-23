@@ -167,6 +167,26 @@ describe("vault info for the Invest card", () => {
   });
 });
 
+describe("GET /api/preview", () => {
+  it("returns the orders for an amount, priced at the ask, without trading", async () => {
+    const { engine, store, calls } = setup();
+    const app = await buildServer(engine, new EventBus(store));
+    const r = (await app.inject({ url: "/api/preview?amount=1000" })).json();
+    expect(r).toMatchObject({ basketId: "t", amountUsd: 1000, bookUsd: "900.00", allChecksOk: true });
+    expect(r.legs.map((l: { symbol: string }) => l.symbol)).toEqual(["AAA-USD", "BBB-USD"]);
+    expect(Number(r.legs[0].price)).toBeGreaterThan(100); // the ask, above the 100 mark
+    expect(calls.filter((c) => c.startsWith("batch"))).toHaveLength(0); // nothing sent
+  });
+
+  it("rejects bad amounts and baskets not listed on this network", async () => {
+    const { engine, store } = setup();
+    const app = await buildServer(engine, new EventBus(store));
+    expect((await app.inject({ url: "/api/preview?amount=-5" })).statusCode).toBe(400);
+    expect((await app.inject({ url: "/api/preview?amount=500&basket=preipo" })).json().error).toMatch(/not listed/);
+    expect((await app.inject({ url: "/api/preview?amount=500&basket=nope" })).statusCode).toBe(404);
+  });
+});
+
 describe("BasketEngine (paper exchange, no vault)", () => {
   it("runs the plan through the executor with paper order IDs and real costs", async () => {
     const fake = fakeStrike();
