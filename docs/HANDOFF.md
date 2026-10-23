@@ -180,7 +180,7 @@ All settings are documented in `backend/.env.example`.
 |---|---|---|
 | Builder code **`StrikeBasket`** | testnet.strikefinance.org/builder-codes (registered by the team owner) | ✅ Active, max 100 bps, $0 volume so far |
 | Testnet API wallet (for the vault) | testnet.strikefinance.org/api-keys; generate with `pnpm keygen` | ⏳ not created |
-| Testnet vault | testnet.strikefinance.org/vaults | ⏳ not created (needs funds) |
+| Testnet vault | testnet.strikefinance.org/vaults | ⏳ not created (needs funds). **Name it "Strike Baskets · Crypto Majors"** and put our website URL in its description: the site's Invest card tells users to search Strike's vault list for that exact name, and the description links them back. The name is set at creation. |
 | Testnet funds | Faucets: see §9 | ⏳ |
 | `PERSONAL_SECRET` | Server env only | Generate once and **never change it** (changing it disconnects every user) |
 | `ADMIN_TOKEN` | Server env only | Enables `/api/admin/*` |

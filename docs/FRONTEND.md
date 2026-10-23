@@ -127,7 +127,9 @@ GET /api/health → { ok, env, mode: "shadow"|"live", source: "vault"|"paper", p
 GET /api/basket → {
   id, version, name, tagline, env, mode, source,
   constituents: { symbol, name, weight }[],
-  vault: { id: string|null, url: string|null },
+  vault: { id, url, listUrl, name, status, minDepositUsd, lockupDays, leaderCommissionBps, depositors, sharePrice, equity },
+  // From Strike's public vault record, refreshed each cycle. All null in paper mode except listUrl (Strike's vault list).
+  // Shown by the "Invest" card: with a vault, exactly where and how to deposit; without one, the live alternatives.
   rules: { grossExposure, driftThresholdBps, marginMode, symbolLeverage, maxLegNotionalUsd, maxRunNotionalUsd, cooldownMin, cycleSeconds,
            gates: { maxSpreadBps, maxMarkMidDeviationBps, maxBookAgeSec } }
 }

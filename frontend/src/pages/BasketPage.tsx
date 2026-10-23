@@ -7,7 +7,7 @@ import { useInstanceData, useLiveStream } from "../lib/live";
 import { EquityChart } from "../components/EquityChart";
 import { DriftGauge } from "../components/Gauge";
 import { OrbitRing } from "../components/OrbitRing";
-import { ComingSoonRow, HoldingsTable, LogList, ProofCard, RulesCard, StatusLine, TickerStrip } from "../components/sections";
+import { ComingSoonRow, HoldingsTable, InvestCard, LogList, ProofCard, RulesCard, StatusLine, TickerStrip } from "../components/sections";
 import { CardTitle, ErrorNote, Glass, LinkButton, Page, Skeleton } from "../components/ui";
 import { useQuery } from "@tanstack/react-query";
 
@@ -103,6 +103,7 @@ export function BasketPage({ api, variant }: { api: Api; variant: "hero" | "test
 
       <Page className="mt-6 space-y-4">
         {b && <TickerStrip basket={b} weights={s?.weights} gates={s?.gates} />}
+        {b && <InvestCard basket={b} />}
 
         {/* ---------- bento ---------- */}
         <div className="grid gap-4 lg:grid-cols-12 [&>*]:min-w-0">

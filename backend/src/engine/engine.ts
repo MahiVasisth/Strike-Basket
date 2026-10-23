@@ -72,6 +72,8 @@ export class BasketEngine {
   private running: Promise<TickResult> | null = null;
   private timer: NodeJS.Timeout | null = null;
   lastSnapshot: Snapshot | null = null;
+  /** Strike's public record of our vault (name, terms, share price), refreshed every cycle. */
+  lastVault: VaultRaw | null = null;
   lastTickAt: number | null = null;
   lastError: string | null = null;
   nextTickAt: number | null = null;
@@ -198,8 +200,15 @@ export class BasketEngine {
       if (accountEquity < budget) personalWarnings.push(`ACCOUNT_EQUITY_BELOW_BUDGET_${Math.floor(accountEquity)}USD`);
       equity = String(Math.max(0, Math.min(budget, accountEquity)));
     } else if (vaultId) {
-      const [v, acct, pos] = await Promise.all([this.client.vault(vaultId), this.client.account(vaultId), this.client.positions(vaultId)]);
-      vault = v;
+      const [v, acct, pos, portfolio] = await Promise.all([
+        this.client.vault(vaultId),
+        this.client.account(vaultId),
+        this.client.positions(vaultId),
+        this.client.vaultPortfolio(vaultId).catch(() => null),
+      ]);
+      // GET /v2/vault/{id} reports depositors: 0; the portfolio endpoint has the real count.
+      vault = { ...v, depositors: portfolio?.depositors ?? v.depositors };
+      this.lastVault = vault;
       equity = acct.margin_balance ?? v.equity;
       positions = pos.map((p) => ({ symbol: p.symbol, size: p.size }));
     } else {

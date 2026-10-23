@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import type { Basket, BasketListing, Gate, Health, Leg, RunDetail, RunSummary, WeightRow } from "../lib/api";
@@ -5,6 +6,7 @@ import { testnetApi } from "../lib/api";
 import { colorsFor, marketColor } from "../lib/colors";
 import { ago, bpsAsPct, engineStale, gateFailureText, price, qty, skipText, ticker, triggerLabel, usd, pct, warningText } from "../lib/format";
 import { useNow } from "../lib/hooks";
+import { useInstances } from "../lib/instances";
 import { MiniRing } from "./OrbitRing";
 import { CardTitle, Chip, Empty, Glass, GlowDot, LinkButton, OrderIdChip, SkeletonRows, StatTile, StatusChip } from "./ui";
 
@@ -135,6 +137,120 @@ export function ProofCard({ className = "" }: { className?: string }) {
 }
 
 // ---------- rules ----------
+
+// ---------- invest: exactly where to put money ----------
+
+/** Answers "where do I invest?": our vault as Strike lists it, its terms and the steps; with no vault, the honest alternatives. */
+export function InvestCard({ basket, className = "" }: { basket: Basket; className?: string }) {
+  return basket.vault.id ? <VaultSteps basket={basket} className={className} /> : <NoVaultYet basket={basket} className={className} />;
+}
+
+function VaultSteps({ basket, className }: { basket: Basket; className: string }) {
+  const { personal } = useInstances();
+  const v = basket.vault;
+  const min = v.minDepositUsd ? usd(v.minDepositUsd, 0) : null;
+  const fee = v.leaderCommissionBps != null ? bpsAsPct(v.leaderCommissionBps, 0) : null;
+  return (
+    <Glass className={`p-6 ${className}`}>
+      <CardTitle right={v.status ? <Chip tone={v.status === "active" ? "ok" : "warn"}>{v.status}</Chip> : undefined}>
+        Invest · Strike vault{basket.env === "testnet" ? " on testnet" : ""}
+      </CardTitle>
+      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
+        <div>
+          <p className="text-[12.5px] text-dim">Listed on Strike as</p>
+          <h3 className="mt-1 break-words font-display text-[26px] font-medium leading-tight">{v.name ?? "Strike Baskets vault"}</h3>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px] text-dim">
+            <span>Vault ID</span>
+            <OrderIdChip id={v.id!} />
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+            <StatTile label="Share price" value={v.sharePrice ? usd(v.sharePrice, 4) : "—"} />
+            <StatTile label="Min deposit" value={min ?? "—"} />
+            <StatTile label="Depositors" value={v.depositors ?? "—"} />
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {v.url && <LinkButton href={v.url} variant="white">Open vault on Strike ↗</LinkButton>}
+            {personal && <LinkButton to="/connect">Or run it in your own account</LinkButton>}
+          </div>
+        </div>
+        <ol className="space-y-3.5 text-[13.5px] leading-relaxed text-dim">
+          <Step n={1}>
+            Open the vault on Strike{v.name && (
+              <>
+                , or go to <a href={v.listUrl} target="_blank" rel="noreferrer" className="text-violet hover:underline">Strike → Vaults</a> and look for <span className="text-text">“{v.name}”</span>
+              </>
+            )}.
+          </Step>
+          <Step n={2}>
+            Deposit{min ? ` at least ${min}` : ""}. Strike gives you vault shares at the current share price{v.sharePrice ? ` (${usd(v.sharePrice, 4)})` : ""}.
+          </Step>
+          <Step n={3}>
+            The bot keeps the basket on target. Withdraw on Strike whenever you like{v.lockupDays != null ? `, after the ${v.lockupDays}-day lockup` : ""}.
+          </Step>
+          <li className="border-t border-edge pt-3 text-[12.5px]">
+            Terms, set on Strike: {fee ? `${fee} of your profit when you withdraw, nothing on losses` : "leader commission on profits only"}. Deposits and
+            withdrawals happen on Strike; the bot can trade the vault but can never withdraw.
+          </li>
+        </ol>
+      </div>
+    </Glass>
+  );
+}
+
+function NoVaultYet({ basket, className }: { basket: Basket; className: string }) {
+  const { testnetUp, personal } = useInstances();
+  const tb = useQuery({
+    queryKey: [testnetApi?.base, "basket"],
+    queryFn: () => testnetApi!.basket(),
+    enabled: testnetUp && !!testnetApi,
+    refetchInterval: 60_000,
+  });
+  const tv = tb.data?.vault;
+  const own = personal?.baskets.find((x) => x.available);
+  return (
+    <Glass className={`p-6 ${className}`}>
+      <CardTitle right={<Chip tone="sim">no vault yet</Chip>}>Invest</CardTitle>
+      <h3 className="font-display text-[24px] font-medium leading-tight">The {basket.name} vault opens on mainnet next</h3>
+      <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-dim">
+        Today this basket runs on live Strike prices with simulated fills, so there is no vault to deposit into yet. You can use the same engine now:
+      </p>
+      {testnetUp || own ? (
+        <div className="mt-5 grid gap-3 md:grid-cols-2 [&>*]:min-w-0">
+          {testnetUp && (
+            <div className="rounded-2xl border border-edge p-4">
+              <p className="text-[12.5px] text-dim">Live Strike vault on testnet</p>
+              <p className="mt-1 break-words text-[16px] text-text">{tv?.name ?? (tv?.id ? "Strike Baskets testnet vault" : "Vault not created yet")}</p>
+              {tv?.id && <div className="mt-2"><OrderIdChip id={tv.id} /></div>}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <LinkButton to="/testnet">See it here</LinkButton>
+                {tv?.url && <LinkButton href={tv.url} variant="white">Open on Strike ↗</LinkButton>}
+              </div>
+            </div>
+          )}
+          {own && (
+            <div className="rounded-2xl border border-edge p-4">
+              <p className="text-[12.5px] text-dim">In your own Strike account</p>
+              <p className="mt-1 text-[16px] text-text">Run {own.name} where your money already is</p>
+              <p className="mt-1 text-[12.5px] text-dim">Sign once with your wallet{own.minBudgetUsd ? `, from ${usd(own.minBudgetUsd, 0)}` : ""}. Pause or disconnect any time.</p>
+              <div className="mt-4"><LinkButton to="/connect" variant="plasma">Connect your account</LinkButton></div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="mt-4 text-[13.5px] text-dim">Live options appear here when the testnet engine is running.</p>
+      )}
+    </Glass>
+  );
+}
+
+function Step({ n, children }: { n: number; children: ReactNode }) {
+  return (
+    <li className="flex gap-3">
+      <span className="num flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-edge text-[12px] text-text">{n}</span>
+      <span className="min-w-0 pt-0.5">{children}</span>
+    </li>
+  );
+}
 
 export function RulesCard({ basket, className = "" }: { basket: Basket; className?: string }) {
   const r = basket.rules;

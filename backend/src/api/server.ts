@@ -58,6 +58,29 @@ function runDetail(store: Store, r: RunRow) {
   };
 }
 
+/**
+ * Where to invest: our vault as Strike lists it, so users can find exactly this vault on Strike.
+ * Terms come from Strike's public vault record (refreshed every cycle), never typed by hand.
+ */
+function vaultInfo(engine: BasketEngine) {
+  const { cfg } = engine;
+  const v = engine.lastVault;
+  return {
+    id: cfg.STRIKE_VAULT_ID ?? null,
+    url: vaultUrl(cfg),
+    /** Strike's vault list, for "Strike → Vaults → search <name>". */
+    listUrl: `${cfg.urls.app}/vaults`,
+    name: v?.name ?? null,
+    status: v?.status ?? null,
+    minDepositUsd: v?.min_deposit ?? null,
+    lockupDays: v?.lockup_days ?? null,
+    leaderCommissionBps: v?.leader_commission_bps ?? null,
+    depositors: v?.depositors ?? null,
+    sharePrice: v?.share_price ?? null,
+    equity: v?.equity ?? null,
+  };
+}
+
 export async function buildServer(engine: BasketEngine, bus: EventBus, personal?: PersonalManager) {
   const { cfg, store, basket } = engine;
   const app = Fastify({ logger: { level: cfg.LOG_LEVEL } });
@@ -91,7 +114,7 @@ export async function buildServer(engine: BasketEngine, bus: EventBus, personal?
     mode: cfg.EXECUTION_MODE,
     source: engine.source,
     constituents: basket.constituents,
-    vault: { id: cfg.STRIKE_VAULT_ID ?? null, url: vaultUrl(cfg) },
+    vault: vaultInfo(engine),
     rules: {
       grossExposure: cfg.GROSS_EXPOSURE,
       driftThresholdBps: cfg.DRIFT_THRESHOLD_BPS,

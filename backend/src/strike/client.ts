@@ -218,6 +218,11 @@ export class StrikeClient {
     return this.get<VaultRaw>(`/v2/vault/${vaultId}`);
   }
 
+  /** Metrics incl. the depositor count (GET /v2/vault/{id} always reports depositors: 0). */
+  vaultPortfolio(vaultId: string) {
+    return this.get<{ depositors?: number; total_value_locked?: string }>(`/v2/vault/${vaultId}/portfolio`);
+  }
+
   vaults(query: Query = {}) {
     return this.get<{ count: number; vaults: VaultRaw[] }>("/v2/vaults", query);
   }

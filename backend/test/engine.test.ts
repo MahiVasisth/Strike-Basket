@@ -1,3 +1,4 @@
+import { buildServer } from "../src/api/server.js";
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../src/config.js";
 import { parseBasket } from "../src/core/basket.js";
@@ -40,7 +41,9 @@ function fakeStrike(opts: { spreadBad?: boolean } = {}) {
           return [s, { symbol: s, bidPrice: String(+p * (1 - w)), askPrice: String(+p * (1 + w)), bidQty: "1", askQty: "1", time: Date.now() }];
         }),
       ),
-    vault: async () => ({ vault_id: "v1", share_price: "1.00", equity: "1000", total_shares: "1000", depositors: 1 }),
+    // Mirrors Strike: GET /v2/vault/{id} reports depositors: 0, the portfolio endpoint has the real count.
+    vault: async () => ({ vault_id: "v1", name: "Strike Baskets · Test", status: "active", share_price: "1.00", equity: "1000", total_shares: "1000", depositors: 0, min_deposit: "100", lockup_days: 1, leader_commission_bps: 1000 }),
+    vaultPortfolio: async () => ({ depositors: 4 }),
     account: async () => ({ margin_balance: "1000", symbol_settings: {} }),
     positions: async () => [...positions].map(([symbol, size]) => ({ symbol, size: String(size) })),
     setMarginMode: async (s: string) => calls.push(`margin ${s}`),
@@ -130,6 +133,37 @@ describe("BasketEngine (live, fake Strike)", () => {
     const r = await engine.tick();
     expect(r.status).toBe("shadow");
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("vault info for the Invest card", () => {
+  it("serves Strike's vault record, with depositors from the portfolio endpoint", async () => {
+    const { engine, store } = setup();
+    await engine.tick();
+    expect(engine.lastSnapshot!.depositors).toBe(4);
+    const app = await buildServer(engine, new EventBus(store));
+    const { vault } = (await app.inject({ url: "/api/basket" })).json();
+    expect(vault).toEqual({
+      id: "v1",
+      url: "https://testnet.strikefinance.org/vaults/v1",
+      listUrl: "https://testnet.strikefinance.org/vaults",
+      name: "Strike Baskets · Test",
+      status: "active",
+      minDepositUsd: "100",
+      lockupDays: 1,
+      leaderCommissionBps: 1000,
+      depositors: 4,
+      sharePrice: "1.00",
+      equity: "1000",
+    });
+  });
+
+  it("paper mode has no vault, so every field is null except the vault list link", async () => {
+    const cfg = loadConfig({ STRIKE_ENV: "mainnet", SHADOW_EQUITY_USD: "1000" });
+    const store = new Store(":memory:");
+    const engine = new BasketEngine(cfg, fakeStrike().client, store, new EventBus(store), basket);
+    const { vault } = (await (await buildServer(engine, new EventBus(store))).inject({ url: "/api/basket" })).json();
+    expect(vault).toMatchObject({ id: null, url: null, name: null, listUrl: "https://app.strikefinance.org/vaults" });
   });
 });
 

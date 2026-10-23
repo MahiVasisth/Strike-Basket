@@ -19,7 +19,12 @@ export interface Constituent { symbol: string; name: string; weight: number }
 export interface Basket {
   id: string; version: number; name: string; tagline: string; env: Env; mode: Mode; source: Source;
   constituents: Constituent[];
-  vault: { id: string | null; url: string | null };
+  /** Our vault as Strike lists it; terms come from Strike's public vault record. All null in paper mode except listUrl. */
+  vault: {
+    id: string | null; url: string | null; listUrl: string; name: string | null; status: string | null;
+    minDepositUsd: string | null; lockupDays: number | null; leaderCommissionBps: number | null;
+    depositors: number | null; sharePrice: string | null; equity: string | null;
+  };
   rules: {
     grossExposure: number; driftThresholdBps: number; marginMode: string; symbolLeverage: number;
     maxLegNotionalUsd: number; maxRunNotionalUsd: number; cooldownMin: number; cycleSeconds: number;
